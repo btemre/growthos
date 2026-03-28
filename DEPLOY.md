@@ -35,6 +35,8 @@ Bu komut `firestore.rules` ve `firestore.indexes.json` dosyalarını `gosbcgiris
 
 `web/apphosting.yaml` dosyasındaki `runConfig` App Hosting tarafından kullanılır.
 
+`web/next.config.ts` içinde **`output: "standalone"`** ve **`turbopack.root`** (monorepo + çift lockfile uyarısı / App Hosting adapter) tanımlıdır; bunları kaldırmayın.
+
 ---
 
 ## Yerel doğrulama
