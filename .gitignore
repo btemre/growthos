@@ -1,0 +1,8 @@
+node_modules/
+web/node_modules/
+web/.next/
+web/out/
+web/.env*
+# Kök .env içinde anahtarlar olabilir — repoya eklemeyin
+.env
+.DS_Store

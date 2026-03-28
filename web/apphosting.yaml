@@ -1,0 +1,11 @@
+# Firebase App Hosting — backend kökü: bu klasör (web/).
+# Ortam değişkenlerini Firebase Console > App Hosting > backend > Environment içinde tanımlayın.
+# Gerekli: NEXT_PUBLIC_FIREBASE_* ve isteğe bağlı NEXT_PUBLIC_BOOTSTRAP_ADMIN_EMAIL
+# (.env.example dosyasına bakın). Değişkenleri Console > App Hosting > Environment ile girin.
+
+runConfig:
+  minInstances: 0
+  maxInstances: 10
+  concurrency: 80
+  cpu: 1
+  memoryMiB: 512
