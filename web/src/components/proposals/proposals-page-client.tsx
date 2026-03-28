@@ -313,7 +313,9 @@ export function ProposalsPageClient() {
                 <Label>Fırsat (deal)</Label>
                 <Select
                   value={dealId}
-                  onValueChange={setDealId}
+                  onValueChange={(v) => {
+                    if (v) setDealId(v);
+                  }}
                   disabled={!!editing}
                 >
                   <SelectTrigger>

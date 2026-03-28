@@ -389,7 +389,12 @@ export function ProgramDetailClient({ programId }: { programId: string }) {
               {!editRow ? (
                 <div className="space-y-2">
                   <Label>Lead</Label>
-                  <Select value={leadId} onValueChange={setLeadId}>
+                  <Select
+                    value={leadId}
+                    onValueChange={(v) => {
+                      if (v) setLeadId(v);
+                    }}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Lead seçin" />
                     </SelectTrigger>
