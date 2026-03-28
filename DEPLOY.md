@@ -37,6 +37,8 @@ Bu komut `firestore.rules` ve `firestore.indexes.json` dosyalarını `gosbcgiris
 
 `web/next.config.ts` içinde **`output: "standalone"`** ve **`turbopack.root`** (monorepo + çift lockfile uyarısı / App Hosting adapter) tanımlıdır; bunları kaldırmayın.
 
+Uygulama ayrıca **`/api/firebase-config`** ile sunucu ortamındaki `NEXT_PUBLIC_FIREBASE_*` değerlerini okur. App Hosting’te bu değişkenler yalnızca **runtime**’da tanımlı olsa bile (build’te gömülü olmasa) giriş ekranı çalışabilir; yine de mümkünse Console’da **build + runtime** için tanımlayın.
+
 ---
 
 ## Yerel doğrulama

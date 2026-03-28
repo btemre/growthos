@@ -17,9 +17,15 @@ import {
   type User,
 } from "firebase/auth";
 import { isFirebaseConfigured } from "@/lib/firebase/config";
-import { getFirebaseAuth, getFirebaseDb } from "@/lib/firebase/client";
+import {
+  applyFirebaseConfig,
+  getFirebaseAuth,
+  getFirebaseDb,
+} from "@/lib/firebase/client";
 import { ensureUserProfile, fetchUserProfile } from "@/lib/firestore/users";
 import type { AppUser } from "@/types/models";
+
+type BootstrapState = "loading" | "ready" | "missing";
 
 type AuthContextValue = {
   firebaseUser: User | null;
@@ -34,28 +40,69 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+function initialBootstrap(): BootstrapState {
+  return isFirebaseConfigured() ? "ready" : "loading";
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const [bootstrapState, setBootstrapState] = useState<BootstrapState>(initialBootstrap);
   const [firebaseUser, setFirebaseUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<AppUser | null>(null);
-  const [loading, setLoading] = useState(true);
-  const needsFirebaseConfig = !isFirebaseConfigured();
+  const [authLoading, setAuthLoading] = useState(true);
+
+  const needsFirebaseConfig = bootstrapState === "missing";
 
   const refreshProfile = useCallback(async () => {
-    if (needsFirebaseConfig || !firebaseUser) {
+    if (needsFirebaseConfig || bootstrapState !== "ready" || !firebaseUser) {
       setProfile(null);
       return;
     }
     const db = getFirebaseDb();
     const p = await fetchUserProfile(db, firebaseUser.uid);
     setProfile(p);
-  }, [firebaseUser, needsFirebaseConfig]);
+  }, [firebaseUser, needsFirebaseConfig, bootstrapState]);
 
   useEffect(() => {
-    if (needsFirebaseConfig) {
-      setLoading(false);
+    if (isFirebaseConfigured()) {
+      setBootstrapState("ready");
       return;
     }
 
+    let cancelled = false;
+    fetch("/api/firebase-config")
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error("config fetch"))))
+      .then((data: Record<string, string>) => {
+        if (cancelled) return;
+        if (data?.apiKey && data?.projectId && data?.appId) {
+          applyFirebaseConfig({
+            apiKey: data.apiKey,
+            authDomain: data.authDomain,
+            projectId: data.projectId,
+            storageBucket: data.storageBucket,
+            messagingSenderId: data.messagingSenderId,
+            appId: data.appId,
+          });
+          setBootstrapState("ready");
+        } else {
+          setBootstrapState("missing");
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setBootstrapState("missing");
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (bootstrapState !== "ready") {
+      setAuthLoading(false);
+      return;
+    }
+
+    setAuthLoading(true);
     const auth = getFirebaseAuth();
     const db = getFirebaseDb();
 
@@ -63,7 +110,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setFirebaseUser(user);
       if (!user) {
         setProfile(null);
-        setLoading(false);
+        setAuthLoading(false);
         return;
       }
       try {
@@ -74,12 +121,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.error(e);
         setProfile(null);
       } finally {
-        setLoading(false);
+        setAuthLoading(false);
       }
     });
 
     return () => unsub();
-  }, [needsFirebaseConfig]);
+  }, [bootstrapState]);
+
+  const loading =
+    bootstrapState === "loading" || (bootstrapState === "ready" && authLoading);
 
   const signIn = useCallback(async (email: string, password: string) => {
     const auth = getFirebaseAuth();

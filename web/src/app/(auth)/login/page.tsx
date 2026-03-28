@@ -62,24 +62,33 @@ export default function LoginPage() {
               Firebase yapılandırması gerekli
             </CardTitle>
             <CardDescription>
-              Uygulama kökünde <code className="rounded bg-muted px-1">web/.env.local</code>{" "}
-              dosyasını oluşturun ve{" "}
-              <code className="rounded bg-muted px-1">.env.example</code> içindeki{" "}
+              <strong>Yerel:</strong>{" "}
+              <code className="rounded bg-muted px-1">web/.env.local</code> içinde{" "}
               <code className="rounded bg-muted px-1">NEXT_PUBLIC_FIREBASE_*</code>{" "}
-              değişkenlerini Firebase Console’dan doldurun. Ardından geliştirme sunucusunu
-              yeniden başlatın.
+              değişkenlerini doldurun; sunucuyu yeniden başlatın.
             </CardDescription>
           </CardHeader>
-          <CardContent className="text-sm text-muted-foreground">
+          <CardContent className="space-y-3 text-sm text-muted-foreground">
             <p>
-              Firestore kuralları ve indeksler için proje kökündeki{" "}
-              <code className="rounded bg-muted px-1">firebase.json</code> ve{" "}
-              <code className="rounded bg-muted px-1">firestore.rules</code> dosyalarını{" "}
-              <code className="rounded bg-muted px-1">firebase deploy</code> ile
-              yükleyin.
+              <strong>App Hosting:</strong> Backend → Environment içinde aynı isimli
+              değişkenler tanımlı olsun (mümkünse hem build hem runtime). Değerler boşsa
+              veya API anahtarında yazım hatası varsa bu ekran görünür.
+            </p>
+            <p>
+              Firestore için:{" "}
+              <code className="rounded bg-muted px-1">firebase deploy --only firestore</code>
             </p>
           </CardContent>
         </Card>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-background">
+        <div className="size-10 animate-pulse rounded-full bg-primary/20" />
+        <p className="text-sm text-muted-foreground">Firebase bağlantısı kuruluyor…</p>
       </div>
     );
   }
@@ -132,7 +141,7 @@ export default function LoginPage() {
                       required
                     />
                   </div>
-                  <Button type="submit" className="w-full" disabled={busy}>
+                  <Button type="submit" className="w-full" disabled={busy || loading}>
                     Giriş yap
                   </Button>
                 </form>
@@ -162,7 +171,7 @@ export default function LoginPage() {
                       minLength={6}
                     />
                   </div>
-                  <Button type="submit" className="w-full" disabled={busy}>
+                  <Button type="submit" className="w-full" disabled={busy || loading}>
                     Hesap oluştur
                   </Button>
                   <p className="text-center text-xs text-muted-foreground">

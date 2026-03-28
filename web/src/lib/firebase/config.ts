@@ -1,5 +1,5 @@
 const required = (key: string): string => {
-  const v = process.env[key];
+  const v = process.env[key]?.trim();
   if (!v) {
     if (typeof window === "undefined") {
       return "";
