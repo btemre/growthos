@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  serverExternalPackages: ["firebase-admin"],
   /** Firebase App Hosting / container: adapter standalone çıktısı bekler */
   output: "standalone",
   /**

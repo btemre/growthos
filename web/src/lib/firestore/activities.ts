@@ -32,6 +32,27 @@ export function subscribeActivitiesForRelated(
   );
 }
 
+/** Tüm aktiviteler (raporlama); tarih aralığı değişince abonelik yenilenmeli. */
+export function subscribeActivitiesInDateRange(
+  db: Firestore,
+  start: Date,
+  end: Date,
+  onData: (rows: Activity[]) => void,
+  onError?: (e: Error) => void
+): Unsubscribe {
+  const q = query(
+    collection(db, "activities"),
+    where("activityDate", ">=", start),
+    where("activityDate", "<=", end),
+    orderBy("activityDate", "desc")
+  );
+  return onSnapshot(
+    q,
+    (snap) => onData(snap.docs.map((d) => activityFromDoc(d.id, d.data()))),
+    (err) => onError?.(err as Error)
+  );
+}
+
 export async function addActivity(
   db: Firestore,
   input: {

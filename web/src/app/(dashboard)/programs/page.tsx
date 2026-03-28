@@ -1,5 +1,5 @@
-import { PlaceholderPage } from "@/components/placeholder-page";
+import { ProgramsPageClient } from "@/components/programs/programs-page-client";
 
 export default function ProgramsPage() {
-  return <PlaceholderPage title="Programlar" />;
+  return <ProgramsPageClient />;
 }

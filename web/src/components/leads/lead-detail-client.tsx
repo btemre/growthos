@@ -1,25 +1,48 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { doc, onSnapshot } from "firebase/firestore";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/auth-context";
-import { ACTIVITY_TYPES, EDUCATION_STAGES, LABELS } from "@/lib/constants";
+import { cn } from "@/lib/utils";
+import {
+  ACTIVITY_TYPES,
+  EDUCATION_STAGES,
+  LABELS,
+  TASK_TYPES,
+} from "@/lib/constants";
 import { getFirebaseDb } from "@/lib/firebase/client";
 import { addActivity, subscribeActivitiesForRelated } from "@/lib/firestore/activities";
 import { subscribeTasksForUser, createTask, completeTask } from "@/lib/firestore/tasks";
+import { subscribeEnrollmentsByLead } from "@/lib/firestore/enrollments";
 import { updateLead } from "@/lib/firestore/leads";
+import { subscribePrograms } from "@/lib/firestore/programs";
 import { leadFromDoc } from "@/lib/firestore/serialize";
-import type { Activity, EducationStage, Lead, Task } from "@/types/models";
+import type {
+  Activity,
+  EducationStage,
+  Enrollment,
+  Lead,
+  Program,
+  Task,
+} from "@/types/models";
 import {
   Select,
   SelectContent,
@@ -27,7 +50,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { ActivityType } from "@/types/models";
+import type { ActivityType, TaskType } from "@/types/models";
+
+function coerceTaskType(raw: string): TaskType {
+  const t = raw?.trim();
+  if (t && TASK_TYPES.includes(t as TaskType)) return t as TaskType;
+  return "follow_up";
+}
 
 export function LeadDetailClient({ leadId }: { leadId: string }) {
   const { firebaseUser, profile } = useAuth();
@@ -41,8 +70,27 @@ export function LeadDetailClient({ leadId }: { leadId: string }) {
   const [activityType, setActivityType] = useState<ActivityType>("note");
   const [taskTitle, setTaskTitle] = useState("");
   const [taskDue, setTaskDue] = useState("");
+  const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
+  const [programs, setPrograms] = useState<Program[]>([]);
+  const [aiSummary, setAiSummary] = useState("");
+  const [aiAction, setAiAction] = useState("");
+  const [aiTaskType, setAiTaskType] = useState<TaskType>("follow_up");
+  const [aiBusy, setAiBusy] = useState(false);
+  const [polishDraft, setPolishDraft] = useState("");
+  const [emailOpen, setEmailOpen] = useState(false);
+  const [waOpen, setWaOpen] = useState(false);
+  const [emailSubject, setEmailSubject] = useState("");
+  const [emailBody, setEmailBody] = useState("");
+  const [waBody, setWaBody] = useState("");
+  const [channelBusy, setChannelBusy] = useState(false);
   const uid = firebaseUser?.uid ?? "";
   const isAdmin = profile?.role === "admin";
+
+  const programTitleById = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const p of programs) m.set(p.id, p.title);
+    return m;
+  }, [programs]);
 
   useEffect(() => {
     const db = getFirebaseDb();
@@ -74,6 +122,18 @@ export function LeadDetailClient({ leadId }: { leadId: string }) {
     });
     return () => unsub();
   }, [uid, isAdmin, leadId]);
+
+  useEffect(() => {
+    if (!uid) return;
+    const db = getFirebaseDb();
+    return subscribeEnrollmentsByLead(db, leadId, setEnrollments);
+  }, [uid, leadId]);
+
+  useEffect(() => {
+    if (!uid) return;
+    const db = getFirebaseDb();
+    return subscribePrograms(db, setPrograms);
+  }, [uid]);
 
   async function saveGeneral() {
     if (!lead) return;
@@ -118,6 +178,157 @@ export function LeadDetailClient({ leadId }: { leadId: string }) {
     } catch (e) {
       console.error(e);
       toast.error("Eklenemedi");
+    }
+  }
+
+  async function fetchAiInsight() {
+    if (!firebaseUser) return;
+    setAiBusy(true);
+    try {
+      const token = await firebaseUser.getIdToken();
+      const res = await fetch("/api/ai/lead-insight", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ leadId, mode: "insight" }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(typeof data.error === "string" ? data.error : "AI yanıtı alınamadı");
+        return;
+      }
+      setAiSummary(String(data.summary ?? ""));
+      setAiAction(String(data.suggestedNextAction ?? ""));
+      setAiTaskType(coerceTaskType(String(data.suggestedTaskType ?? "")));
+      toast.success("Öneri hazır");
+    } catch (e) {
+      console.error(e);
+      toast.error("İstek başarısız");
+    } finally {
+      setAiBusy(false);
+    }
+  }
+
+  async function polishNoteWithAi() {
+    if (!firebaseUser || !notes.trim()) {
+      toast.error("Önce not yazın");
+      return;
+    }
+    setAiBusy(true);
+    try {
+      const token = await firebaseUser.getIdToken();
+      const res = await fetch("/api/ai/lead-insight", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          leadId,
+          mode: "polish_note",
+          noteText: notes,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(typeof data.error === "string" ? data.error : "AI yanıtı alınamadı");
+        return;
+      }
+      setPolishDraft(String(data.polishedNote ?? ""));
+      toast.success("Taslak hazır");
+    } catch (e) {
+      console.error(e);
+      toast.error("İstek başarısız");
+    } finally {
+      setAiBusy(false);
+    }
+  }
+
+  async function sendEmailOutbound() {
+    if (!firebaseUser || !emailSubject.trim() || !emailBody.trim()) return;
+    setChannelBusy(true);
+    try {
+      const token = await firebaseUser.getIdToken();
+      const res = await fetch("/api/email/send", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          leadId,
+          subject: emailSubject.trim(),
+          text: emailBody.trim(),
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(typeof data.error === "string" ? data.error : "Gönderilemedi");
+        return;
+      }
+      toast.success("E-posta gönderildi");
+      setEmailOpen(false);
+      setEmailSubject("");
+      setEmailBody("");
+    } catch (e) {
+      console.error(e);
+      toast.error("İstek başarısız");
+    } finally {
+      setChannelBusy(false);
+    }
+  }
+
+  async function sendWhatsAppOutbound() {
+    if (!firebaseUser || !waBody.trim()) return;
+    setChannelBusy(true);
+    try {
+      const token = await firebaseUser.getIdToken();
+      const res = await fetch("/api/whatsapp/send", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ leadId, message: waBody.trim() }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(typeof data.error === "string" ? data.error : "Gönderilemedi");
+        return;
+      }
+      toast.success("WhatsApp gönderildi");
+      setWaOpen(false);
+      setWaBody("");
+    } catch (e) {
+      console.error(e);
+      toast.error("İstek başarısız");
+    } finally {
+      setChannelBusy(false);
+    }
+  }
+
+  async function createTaskFromAi() {
+    if (!uid || !aiAction.trim()) {
+      toast.error("Önce AI önerisi alın");
+      return;
+    }
+    try {
+      const db = getFirebaseDb();
+      await createTask(db, {
+        relatedType: "lead",
+        relatedId: leadId,
+        assignedTo: uid,
+        title: aiAction.trim().slice(0, 200),
+        taskType: aiTaskType,
+        dueDate: null,
+        priority: "medium",
+      });
+      toast.success("Görev oluşturuldu");
+    } catch (e) {
+      console.error(e);
+      toast.error("Görev oluşturulamadı");
     }
   }
 
@@ -176,9 +387,8 @@ export function LeadDetailClient({ leadId }: { leadId: string }) {
           <TabsTrigger value="activities">Aktiviteler</TabsTrigger>
           <TabsTrigger value="tasks">Görevler</TabsTrigger>
           <TabsTrigger value="notes">Notlar</TabsTrigger>
-          <TabsTrigger value="more" disabled>
-            Teklif / ödeme (Faz 2)
-          </TabsTrigger>
+          <TabsTrigger value="enrollment">Kayıt / ödeme</TabsTrigger>
+          <TabsTrigger value="ai">AI yardım</TabsTrigger>
         </TabsList>
 
         <TabsContent value="general" className="space-y-4">
@@ -190,10 +400,30 @@ export function LeadDetailClient({ leadId }: { leadId: string }) {
               <div>
                 <p className="text-muted-foreground">E-posta</p>
                 <p>{lead.email ?? "—"}</p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="mt-2"
+                  disabled={!lead.email?.trim()}
+                  onClick={() => setEmailOpen(true)}
+                >
+                  E-posta gönder
+                </Button>
               </div>
               <div>
                 <p className="text-muted-foreground">Telefon</p>
                 <p>{lead.phone ?? "—"}</p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="mt-2"
+                  disabled={!lead.phone?.trim() && !lead.whatsapp?.trim()}
+                  onClick={() => setWaOpen(true)}
+                >
+                  WhatsApp gönder
+                </Button>
               </div>
               <div>
                 <p className="text-muted-foreground">Şehir</p>
@@ -250,9 +480,95 @@ export function LeadDetailClient({ leadId }: { leadId: string }) {
                   onChange={(e) => setNotes(e.target.value)}
                 />
               </div>
-              <Button type="button" onClick={saveGeneral}>
-                Kaydet
+              <div className="flex flex-wrap gap-2">
+                <Button type="button" onClick={saveGeneral}>
+                  Kaydet
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={aiBusy || !notes.trim()}
+                  onClick={() => void polishNoteWithAi()}
+                >
+                  Notu AI ile düzenle
+                </Button>
+              </div>
+              {polishDraft ? (
+                <div className="space-y-2 rounded-md border bg-muted/30 p-3 text-sm">
+                  <p className="font-medium">AI taslağı</p>
+                  <p className="whitespace-pre-wrap">{polishDraft}</p>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setNotes(polishDraft);
+                      setPolishDraft("");
+                      toast.message("Not alanına kopyalandı; Kaydet ile saklayın.");
+                    }}
+                  >
+                    Not alanına aktar
+                  </Button>
+                </div>
+              ) : null}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="ai" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Özet ve sonraki adım</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              <p className="text-muted-foreground">
+                Notlar ve son aktivitelere göre kısa özet ve önerilen aksiyon (OpenAI;
+                sunucuda API anahtarı gerekir).
+              </p>
+              <Button
+                type="button"
+                disabled={aiBusy}
+                onClick={() => void fetchAiInsight()}
+              >
+                {aiBusy ? "Çalışıyor…" : "Öneri üret"}
               </Button>
+              {aiSummary ? (
+                <div className="space-y-2">
+                  <p className="font-medium">Özet</p>
+                  <p className="whitespace-pre-wrap rounded-md border bg-card/50 p-3">
+                    {aiSummary}
+                  </p>
+                </div>
+              ) : null}
+              {aiAction ? (
+                <div className="space-y-2">
+                  <p className="font-medium">Önerilen aksiyon</p>
+                  <p className="whitespace-pre-wrap rounded-md border bg-card/50 p-3">
+                    {aiAction}
+                  </p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Label className="text-xs">Görev tipi</Label>
+                    <Select
+                      value={aiTaskType}
+                      onValueChange={(v) => v && setAiTaskType(coerceTaskType(v))}
+                    >
+                      <SelectTrigger className="w-[200px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {TASK_TYPES.map((t) => (
+                          <SelectItem key={t} value={t}>
+                            {LABELS.taskType[t]}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button type="button" variant="secondary" onClick={() => void createTaskFromAi()}>
+                      Görev oluştur
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
             </CardContent>
           </Card>
         </TabsContent>
@@ -384,7 +700,133 @@ export function LeadDetailClient({ leadId }: { leadId: string }) {
             </CardContent>
           </Card>
         </TabsContent>
+
+        <TabsContent value="enrollment" className="space-y-4">
+          <Card>
+            <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 space-y-0">
+              <CardTitle className="text-base">Program kayıtları</CardTitle>
+              <Link
+                href="/programs"
+                className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+              >
+                Programlar
+              </Link>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              <p className="text-muted-foreground">
+                Bu lead&apos;in kayıtlı olduğu programlar ve ödeme durumu. Yeni kayıt
+                eklemek için ilgili program sayfasını açın.
+              </p>
+              <div className="space-y-2">
+                {enrollments.map((en) => (
+                  <div
+                    key={en.id}
+                    className="flex flex-col gap-2 rounded-lg border bg-card/50 p-3 sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    <div>
+                      <p className="font-medium">
+                        {programTitleById.get(en.programId) ?? "Program"}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {en.joinedAt
+                          ? `Kayıt: ${format(en.joinedAt, "d MMM yyyy", { locale: tr })}`
+                          : "Kayıt tarihi yok"}
+                        {en.paymentAmount != null
+                          ? ` · ${en.paymentAmount.toLocaleString("tr-TR")} ₺`
+                          : ""}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge variant="outline">
+                        {LABELS.paymentStatus[en.paymentStatus]}
+                      </Badge>
+                      <Link
+                        href={`/programs/${en.programId}`}
+                        className={cn(
+                          buttonVariants({ variant: "secondary", size: "sm" })
+                        )}
+                      >
+                        Programa git
+                      </Link>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {enrollments.length === 0 ? (
+                <p className="text-muted-foreground">
+                  Henüz bir programa kayıt yok.
+                </p>
+              ) : null}
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
+
+      <Dialog open={emailOpen} onOpenChange={setEmailOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>E-posta gönder</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-3 py-2">
+            <div className="space-y-2">
+              <Label>Konu</Label>
+              <Input
+                value={emailSubject}
+                onChange={(e) => setEmailSubject(e.target.value)}
+                placeholder="Konu"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Metin</Label>
+              <Textarea
+                rows={6}
+                value={emailBody}
+                onChange={(e) => setEmailBody(e.target.value)}
+                placeholder="Mesajınız…"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              disabled={channelBusy}
+              onClick={() => void sendEmailOutbound()}
+            >
+              {channelBusy ? "Gönderiliyor…" : "Gönder"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={waOpen} onOpenChange={setWaOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>WhatsApp mesajı</DialogTitle>
+          </DialogHeader>
+          <p className="text-xs text-muted-foreground">
+            Meta politikası: sohbet penceresi dışında şablon mesajı gerekir. Test
+            hesabında düz metin çalışabilir.
+          </p>
+          <div className="space-y-2 py-2">
+            <Label>Mesaj</Label>
+            <Textarea
+              rows={5}
+              value={waBody}
+              onChange={(e) => setWaBody(e.target.value)}
+              placeholder="Mesajınız…"
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              disabled={channelBusy}
+              onClick={() => void sendWhatsAppOutbound()}
+            >
+              {channelBusy ? "Gönderiliyor…" : "Gönder"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

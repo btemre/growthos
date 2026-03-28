@@ -48,7 +48,13 @@ function StageColumn({
   );
 }
 
-function DealCard({ deal }: { deal: Deal }) {
+function DealCard({
+  deal,
+  showProposalLink,
+}: {
+  deal: Deal;
+  showProposalLink?: boolean;
+}) {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({ id: deal.id });
 
@@ -70,6 +76,16 @@ function DealCard({ deal }: { deal: Deal }) {
           <Badge variant="secondary" className="text-[10px]">
             {LABELS.serviceType[deal.serviceType]}
           </Badge>
+          {showProposalLink ? (
+            <Link
+              href={`/proposals?deal=${deal.id}`}
+              className="inline-block text-xs font-medium text-primary hover:underline"
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => e.stopPropagation()}
+            >
+              Teklif →
+            </Link>
+          ) : null}
         </CardContent>
       </Card>
     </div>
@@ -163,7 +179,11 @@ export function CorporateBoard() {
             {CORPORATE_DEAL_STAGES.map((stage) => (
               <StageColumn key={stage} stage={stage}>
                 {(byStage.get(stage) ?? []).map((deal) => (
-                  <DealCard key={deal.id} deal={deal} />
+                  <DealCard
+                    key={deal.id}
+                    deal={deal}
+                    showProposalLink={canManage}
+                  />
                 ))}
               </StageColumn>
             ))}

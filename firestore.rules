@@ -79,7 +79,31 @@ service cloud.firestore {
     }
 
     match /proposals/{proposalId} {
-      allow read, write: if signedIn() && (isAdmin() || userRole() == 'business_dev');
+      function proposalDealRef(dealId) {
+        return /databases/$(database)/documents/deals/$(dealId);
+      }
+
+      function ownsProposalDeal(dealId) {
+        return exists(proposalDealRef(dealId))
+          && get(proposalDealRef(dealId)).data.ownerId == request.auth.uid;
+      }
+
+      allow read: if signedIn()
+        && (isAdmin()
+          || (userRole() == 'business_dev' && ownsProposalDeal(resource.data.dealId)));
+      allow create: if signedIn()
+        && (isAdmin()
+          || (userRole() == 'business_dev'
+            && request.resource.data.keys().hasAll(['dealId', 'title', 'scope', 'status'])
+            && ownsProposalDeal(request.resource.data.dealId)));
+      allow update: if signedIn()
+        && (isAdmin()
+          || (userRole() == 'business_dev'
+            && resource.data.dealId == request.resource.data.dealId
+            && ownsProposalDeal(resource.data.dealId)));
+      allow delete: if signedIn()
+        && (isAdmin()
+          || (userRole() == 'business_dev' && ownsProposalDeal(resource.data.dealId)));
     }
 
     match /programs/{programId} {
@@ -87,8 +111,42 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    match /whatsapp_inbound_unmatched/{docId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
     match /enrollments/{enrollmentId} {
-      allow read, write: if signedIn() && (isAdmin() || userRole() == 'operations' || userRole() == 'mentor');
+      function enrollmentLeadRef(leadId) {
+        return /databases/$(database)/documents/leads/$(leadId);
+      }
+
+      function ownsEnrollmentLead(leadId) {
+        return exists(enrollmentLeadRef(leadId))
+          && get(enrollmentLeadRef(leadId)).data.ownerId == request.auth.uid;
+      }
+
+      allow read: if signedIn()
+        && (isAdmin()
+          || userRole() == 'operations'
+          || userRole() == 'mentor'
+          || (userRole() == 'education_sales' && ownsEnrollmentLead(resource.data.leadId)));
+      allow create: if signedIn()
+        && (isAdmin()
+          || userRole() == 'operations'
+          || userRole() == 'mentor'
+          || (userRole() == 'education_sales'
+            && request.resource.data.keys().hasAll(['programId', 'leadId'])
+            && ownsEnrollmentLead(request.resource.data.leadId)));
+      allow update: if signedIn()
+        && (isAdmin()
+          || userRole() == 'operations'
+          || userRole() == 'mentor'
+          || (userRole() == 'education_sales'
+            && resource.data.leadId == request.resource.data.leadId
+            && ownsEnrollmentLead(resource.data.leadId)));
+      allow delete: if signedIn()
+        && (isAdmin() || userRole() == 'operations');
     }
   }
 }

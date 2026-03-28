@@ -75,6 +75,39 @@ export const ACTIVITY_TYPES = [
   "contract_sent",
 ] as const;
 
+export const PROGRAM_TYPES = [
+  "bootcamp",
+  "advanced_lab",
+  "mentorship",
+  "project_team",
+  "other",
+] as const;
+
+export const PROGRAM_STATUSES = [
+  "draft",
+  "open",
+  "ongoing",
+  "completed",
+  "cancelled",
+] as const;
+
+export const PAYMENT_STATUSES = [
+  "unpaid",
+  "partial",
+  "paid",
+  "refunded",
+  "waived",
+] as const;
+
+export const PROPOSAL_STATUSES = [
+  "draft",
+  "prepared",
+  "sent",
+  "revision_requested",
+  "accepted",
+  "rejected",
+] as const;
+
 export const SERVICE_TYPES = [
   "software_dev",
   "website",
@@ -159,6 +192,35 @@ export const LABELS = {
     proposal_sent: "Teklif gönderimi",
     payment_request: "Ödeme talebi",
     contract_sent: "Sözleşme gönderimi",
+  },
+  programType: {
+    bootcamp: "Bootcamp",
+    advanced_lab: "İleri seviye lab",
+    mentorship: "Mentörlük",
+    project_team: "Proje takımı",
+    other: "Diğer",
+  },
+  programStatus: {
+    draft: "Taslak",
+    open: "Kayıt açık",
+    ongoing: "Devam ediyor",
+    completed: "Tamamlandı",
+    cancelled: "İptal",
+  },
+  paymentStatus: {
+    unpaid: "Ödenmedi",
+    partial: "Kısmi ödeme",
+    paid: "Ödendi",
+    refunded: "İade",
+    waived: "Muaf / ücretsiz",
+  },
+  proposalStatus: {
+    draft: "Taslak",
+    prepared: "Hazırlandı",
+    sent: "Gönderildi",
+    revision_requested: "Revize istendi",
+    accepted: "Kabul edildi",
+    rejected: "Reddedildi",
   },
   serviceType: {
     software_dev: "Yazılım geliştirme",
