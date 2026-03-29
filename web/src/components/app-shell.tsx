@@ -24,6 +24,7 @@ import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/auth-context";
 import { LABELS } from "@/lib/constants";
+import { formatVersionLabel, getBuildInfo } from "@/lib/build-info";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -67,6 +68,12 @@ export function AppShell({
       .join("")
       .slice(0, 2)
       .toUpperCase() || "G";
+
+  const { version, buildTime, gitSha } = getBuildInfo();
+  const versionLine = formatVersionLabel(version);
+  const versionTitle = [buildTime && `Build: ${buildTime}`, gitSha && `Commit: ${gitSha}`]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -130,6 +137,14 @@ export function AppShell({
             })}
           </nav>
         </ScrollArea>
+        <div className="border-t border-sidebar-border px-3 py-2">
+          <p
+            className="px-1 font-mono text-xs text-muted-foreground tabular-nums"
+            title={versionTitle || undefined}
+          >
+            {versionLine}
+          </p>
+        </div>
         <div className="border-t border-sidebar-border p-3">
           <p className="px-1 text-xs text-muted-foreground">Giriş yapan</p>
           <p className="truncate px-1 text-sm font-medium">{profile?.name}</p>
