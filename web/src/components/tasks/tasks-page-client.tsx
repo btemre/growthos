@@ -37,6 +37,8 @@ export function TasksPageClient() {
   const [title, setTitle] = useState("");
   const [due, setDue] = useState("");
   const [leadId, setLeadId] = useState<string>("");
+  const [isCreating, setIsCreating] = useState(false);
+  const [completingTaskId, setCompletingTaskId] = useState<string | null>(null);
   const uid = firebaseUser?.uid ?? "";
   const isAdmin = profile?.role === "admin";
 
@@ -62,6 +64,7 @@ export function TasksPageClient() {
       toast.error("Başlık ve lead seçin");
       return;
     }
+    setIsCreating(true);
     try {
       const db = getFirebaseDb();
       await createTask(db, {
@@ -80,6 +83,8 @@ export function TasksPageClient() {
     } catch (err) {
       console.error(err);
       toast.error("Oluşturulamadı");
+    } finally {
+      setIsCreating(false);
     }
   }
 
@@ -141,7 +146,7 @@ export function TasksPageClient() {
                 </div>
               </div>
               <DialogFooter>
-                <Button type="submit">Oluştur</Button>
+                <Button type="submit" loading={isCreating}>Oluştur</Button>
               </DialogFooter>
             </form>
           </DialogContent>
@@ -168,7 +173,9 @@ export function TasksPageClient() {
                 <Button
                   size="sm"
                   variant="outline"
+                  loading={completingTaskId === t.id}
                   onClick={async () => {
+                    setCompletingTaskId(t.id);
                     try {
                       const db = getFirebaseDb();
                       await completeTask(db, t.id);
@@ -176,6 +183,8 @@ export function TasksPageClient() {
                     } catch (e) {
                       console.error(e);
                       toast.error("İşlem başarısız");
+                    } finally {
+                      setCompletingTaskId(null);
                     }
                   }}
                 >

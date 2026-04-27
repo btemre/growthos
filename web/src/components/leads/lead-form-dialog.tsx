@@ -131,7 +131,7 @@ export function LeadFormDialog({ ownerId }: { ownerId: string }) {
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               İptal
             </Button>
-            <Button type="submit" disabled={busy}>
+            <Button type="submit" loading={busy}>
               Kaydet
             </Button>
           </DialogFooter>
