@@ -1,0 +1,3 @@
+## 2025-05-14 - Unstable Date Objects in useMemo Dependencies
+**Learning:** Defining date objects (e.g., `new Date()`) or derived values like `startOfDay(new Date())` in the component body and passing them as `useMemo` dependencies causes the memoization to fail on every render because their object identity is always new.
+**Action:** Move these calculations inside the `useMemo` block. This keeps the dependency array stable (only tracking actual data changes) and ensures memoization works correctly. Additionally, pre-calculate these thresholds once at the start of the `useMemo` block rather than inside loop iterations (like `.filter()`) to further reduce overhead.
