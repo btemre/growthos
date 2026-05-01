@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import {
   endOfDay,
   format,
@@ -28,7 +28,11 @@ import { subscribeTasksForUser } from "@/lib/firestore/tasks";
 import { subscribeDealsForUser } from "@/lib/firestore/deals";
 import type { Deal, Lead, Task } from "@/types/models";
 
-function KpiCard({
+/**
+ * PERFORMANCE: KpiCard is memoized to prevent re-renders when the parent
+ * DashboardHome re-renders but the KPI data hasn't changed.
+ */
+const KpiCard = memo(function KpiCard({
   title,
   value,
   hint,
@@ -53,7 +57,7 @@ function KpiCard({
       </CardContent>
     </Card>
   );
-}
+});
 
 export function DashboardHome() {
   const { firebaseUser, profile } = useAuth();
@@ -77,11 +81,21 @@ export function DashboardHome() {
     };
   }, [uid, isAdmin]);
 
-  const todayStart = startOfDay(new Date());
-  const todayEnd = endOfDay(new Date());
-  const weekAgo = startOfDay(subDays(new Date(), 7));
-
   const stats = useMemo(() => {
+    /**
+     * PERFORMANCE: Moving date thresholds inside useMemo prevents unnecessary
+     * recalculations of the entire stats object. Previously, 'todayStart', etc.
+     * were created in the component body and passed as dependencies. Since
+     * 'new Date()' creates a new reference every render, the useMemo was
+     * effectively bypassed.
+     *
+     * IMPACT: Reduces 'stats' recalculation frequency from "every render" to
+     * "only when leads, tasks, or deals change".
+     */
+    const todayStart = startOfDay(new Date());
+    const todayEnd = endOfDay(new Date());
+    const weekAgo = startOfDay(subDays(new Date(), 7));
+
     const leadsToday = leads.filter((l) => {
       const c = l.createdAt;
       if (!c) return false;
@@ -138,7 +152,7 @@ export function DashboardHome() {
       hotSilent,
       overdueTasks,
     };
-  }, [leads, tasks, deals, todayStart, todayEnd, weekAgo]);
+  }, [leads, tasks, deals]);
 
   return (
     <div className="space-y-8">
