@@ -37,6 +37,7 @@ export function TasksPageClient() {
   const [title, setTitle] = useState("");
   const [due, setDue] = useState("");
   const [leadId, setLeadId] = useState<string>("");
+  const [busy, setBusy] = useState(false);
   const uid = firebaseUser?.uid ?? "";
   const isAdmin = profile?.role === "admin";
 
@@ -62,6 +63,7 @@ export function TasksPageClient() {
       toast.error("Başlık ve lead seçin");
       return;
     }
+    setBusy(true);
     try {
       const db = getFirebaseDb();
       await createTask(db, {
@@ -80,6 +82,8 @@ export function TasksPageClient() {
     } catch (err) {
       console.error(err);
       toast.error("Oluşturulamadı");
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -105,21 +109,22 @@ export function TasksPageClient() {
               </DialogHeader>
               <div className="grid gap-3 py-4">
                 <div className="space-y-2">
-                  <Label>Başlık</Label>
+                  <Label htmlFor="task-title">Başlık</Label>
                   <Input
+                    id="task-title"
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     required
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Bağlı lead</Label>
+                  <Label htmlFor="task-lead">Bağlı lead</Label>
                   <Select
                     value={leadId}
                     onValueChange={(v) => setLeadId(v ?? "")}
                     required
                   >
-                    <SelectTrigger>
+                    <SelectTrigger id="task-lead">
                       <SelectValue placeholder="Lead seçin" />
                     </SelectTrigger>
                     <SelectContent>
@@ -132,8 +137,9 @@ export function TasksPageClient() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Bitiş (opsiyonel)</Label>
+                  <Label htmlFor="task-due">Bitiş (opsiyonel)</Label>
                   <Input
+                    id="task-due"
                     type="datetime-local"
                     value={due}
                     onChange={(e) => setDue(e.target.value)}
@@ -141,7 +147,9 @@ export function TasksPageClient() {
                 </div>
               </div>
               <DialogFooter>
-                <Button type="submit">Oluştur</Button>
+                <Button type="submit" loading={busy}>
+                  Oluştur
+                </Button>
               </DialogFooter>
             </form>
           </DialogContent>
