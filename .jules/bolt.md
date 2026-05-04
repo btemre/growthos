@@ -1,0 +1,3 @@
+## 2025-05-24 - Stable date dependencies in useMemo
+**Learning:** In the `DashboardHome` component, date thresholds (like `todayStart`, `todayEnd`) were defined in the component body using `new Date()`. These were passed as dependencies to `useMemo`. Since `new Date()` creates a new object reference on every render, the `useMemo` block was recalculating every time, defeating its purpose and causing unnecessary overhead during frequent Firebase snapshot updates.
+**Action:** Always move unstable object or date calculations inside the `useMemo` callback or calculate them outside the component if they are static. Consolidation of multiple `.filter()` calls into a single memoized object also reduces the work done in the render path.
