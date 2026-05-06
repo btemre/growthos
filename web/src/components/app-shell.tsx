@@ -107,6 +107,7 @@ export function AppShell({
             variant="ghost"
             size="icon"
             className="lg:hidden"
+            aria-label="Menüyü kapat"
             onClick={() => setMobileOpen(false)}
           >
             <X className="size-4" />
@@ -160,6 +161,7 @@ export function AppShell({
             variant="ghost"
             size="icon"
             className="lg:hidden"
+            aria-label="Menüyü aç"
             onClick={() => setMobileOpen(true)}
           >
             <Menu className="size-5" />
@@ -175,6 +177,7 @@ export function AppShell({
             className="hidden xl:flex"
             onClick={() => setShowRight((v) => !v)}
             title="Sağ panel"
+            aria-label={showRight ? "Sağ paneli kapat" : "Sağ paneli aç"}
           >
             <PanelRight className="size-4" />
           </Button>
