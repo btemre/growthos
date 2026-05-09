@@ -107,6 +107,7 @@ export function AppShell({
             variant="ghost"
             size="icon"
             className="lg:hidden"
+            aria-label="Menüyü kapat"
             onClick={() => setMobileOpen(false)}
           >
             <X className="size-4" />
@@ -160,6 +161,7 @@ export function AppShell({
             variant="ghost"
             size="icon"
             className="lg:hidden"
+            aria-label="Menüyü aç"
             onClick={() => setMobileOpen(true)}
           >
             <Menu className="size-5" />
@@ -173,6 +175,7 @@ export function AppShell({
             variant="outline"
             size="icon-sm"
             className="hidden xl:flex"
+            aria-label="Sağ paneli aç/kapat"
             onClick={() => setShowRight((v) => !v)}
             title="Sağ panel"
           >
