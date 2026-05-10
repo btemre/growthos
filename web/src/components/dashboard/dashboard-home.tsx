@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, memo } from "react";
 import {
   endOfDay,
   format,
@@ -28,7 +28,11 @@ import { subscribeTasksForUser } from "@/lib/firestore/tasks";
 import { subscribeDealsForUser } from "@/lib/firestore/deals";
 import type { Deal, Lead, Task } from "@/types/models";
 
-function KpiCard({
+/**
+ * PERFORMANCE: Memoized to prevent unnecessary re-renders when parent state changes.
+ * IMPACT: Reduces redundant render cycles for standard KPI metrics.
+ */
+const KpiCard = memo(function KpiCard({
   title,
   value,
   hint,
@@ -53,7 +57,7 @@ function KpiCard({
       </CardContent>
     </Card>
   );
-}
+});
 
 export function DashboardHome() {
   const { firebaseUser, profile } = useAuth();
@@ -77,11 +81,18 @@ export function DashboardHome() {
     };
   }, [uid, isAdmin]);
 
-  const todayStart = startOfDay(new Date());
-  const todayEnd = endOfDay(new Date());
-  const weekAgo = startOfDay(subDays(new Date(), 7));
-
+  /**
+   * PERFORMANCE: Memoized stats calculation.
+   * IMPACT: Prevents expensive array filtering and reductions on every render.
+   * Note: We define date thresholds INSIDE useMemo to avoid re-calculating
+   * new Date() on every render, which would invalidate the memoization.
+   */
   const stats = useMemo(() => {
+    const now = new Date();
+    const todayStart = startOfDay(now);
+    const todayEnd = endOfDay(now);
+    const weekAgo = startOfDay(subDays(now, 7));
+
     const leadsToday = leads.filter((l) => {
       const c = l.createdAt;
       if (!c) return false;
@@ -90,9 +101,10 @@ export function DashboardHome() {
 
     const callsToday = 0;
 
-    const followUpsToday = tasks.filter(
+    const openTasks = tasks.filter((t) => t.status === "open");
+
+    const followUpsToday = openTasks.filter(
       (t) =>
-        t.status === "open" &&
         t.dueDate &&
         !isBefore(t.dueDate, todayStart) &&
         !isAfter(t.dueDate, todayEnd)
@@ -108,7 +120,7 @@ export function DashboardHome() {
     const corpOpenedMonth = deals.filter((d) => {
       const c = d.createdAt;
       if (!c) return false;
-      return !isBefore(c, startOfDay(subDays(new Date(), 30)));
+      return !isBefore(c, startOfDay(subDays(now, 30)));
     }).length;
 
     const pipelineValue = deals.reduce((acc, d) => acc + (d.estimatedValue ?? 0), 0);
@@ -118,14 +130,11 @@ export function DashboardHome() {
       if (l.score < 50) return false;
       const last = l.lastContactAt;
       if (!last) return true;
-      return isBefore(last, subDays(new Date(), 3));
+      return isBefore(last, subDays(now, 3));
     });
 
-    const overdueTasks = tasks.filter(
-      (t) =>
-        t.status === "open" &&
-        t.dueDate &&
-        isBefore(t.dueDate, todayStart)
+    const overdueTasks = openTasks.filter(
+      (t) => t.dueDate && isBefore(t.dueDate, todayStart)
     );
 
     return {
@@ -136,9 +145,10 @@ export function DashboardHome() {
       corpOpenedMonth,
       pipelineValue,
       hotSilent,
+      openTasks,
       overdueTasks,
     };
-  }, [leads, tasks, deals, todayStart, todayEnd, weekAgo]);
+  }, [leads, tasks, deals]);
 
   return (
     <div className="space-y-8">
@@ -246,11 +256,10 @@ export function DashboardHome() {
             <CardTitle className="text-base">Bugünkü görevler</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
-            {tasks.filter((t) => t.status === "open").length === 0 ? (
+            {stats.openTasks.length === 0 ? (
               <p className="text-muted-foreground">Açık görev yok.</p>
             ) : (
-              tasks
-                .filter((t) => t.status === "open")
+              stats.openTasks
                 .slice(0, 6)
                 .map((t) => (
                   <div
