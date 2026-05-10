@@ -1,0 +1,3 @@
+## 2026-05-10 - DashboardHome: Fixing broken memoization and redundant filtering
+**Learning:** Instantiating new objects (like `new Date()`) in the component body and passing them as dependencies to `useMemo` or `useEffect` effectively disables memoization, as they are never shallowly equal across renders. Also, performing multiple filter operations on the same array in the render path is an avoidable O(n) overhead.
+**Action:** Move threshold calculations (start of day, sub days) inside the `useMemo` callback to preserve memoization integrity. Pre-calculate filtered subsets (e.g., `openTasks`) once and reuse them for derived stats and UI rendering.
