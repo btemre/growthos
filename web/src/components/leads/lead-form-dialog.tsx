@@ -71,20 +71,21 @@ export function LeadFormDialog({ ownerId }: { ownerId: string }) {
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="space-y-2">
-              <Label>Ad / görünen ad</Label>
+              <Label htmlFor="name">Ad / görünen ad</Label>
               <Input
+                id="name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
               />
             </div>
             <div className="space-y-2">
-              <Label>Tür</Label>
+              <Label htmlFor="type">Tür</Label>
               <Select
                 value={type}
                 onValueChange={(v) => v && setType(v as LeadType)}
               >
-                <SelectTrigger>
+                <SelectTrigger id="type">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -97,12 +98,12 @@ export function LeadFormDialog({ ownerId }: { ownerId: string }) {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Kaynak</Label>
+              <Label htmlFor="source">Kaynak</Label>
               <Select
                 value={source}
                 onValueChange={(v) => v && setSource(v as LeadSource)}
               >
-                <SelectTrigger>
+                <SelectTrigger id="source">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -115,23 +116,28 @@ export function LeadFormDialog({ ownerId }: { ownerId: string }) {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>E-posta</Label>
+              <Label htmlFor="email">E-posta</Label>
               <Input
+                id="email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />
             </div>
             <div className="space-y-2">
-              <Label>Telefon</Label>
-              <Input value={phone} onChange={(e) => setPhone(e.target.value)} />
+              <Label htmlFor="phone">Telefon</Label>
+              <Input
+                id="phone"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+              />
             </div>
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               İptal
             </Button>
-            <Button type="submit" disabled={busy}>
+            <Button type="submit" loading={busy}>
               Kaydet
             </Button>
           </DialogFooter>
