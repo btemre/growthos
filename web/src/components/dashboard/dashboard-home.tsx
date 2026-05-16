@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import {
   endOfDay,
   format,
@@ -28,7 +28,11 @@ import { subscribeTasksForUser } from "@/lib/firestore/tasks";
 import { subscribeDealsForUser } from "@/lib/firestore/deals";
 import type { Deal, Lead, Task } from "@/types/models";
 
-function KpiCard({
+/**
+ * PERFORMANCE: KpiCard is a simple presentational component.
+ * IMPACT: React.memo prevents re-renders when parent state (leads, tasks, etc.) changes if props remain stable.
+ */
+const KpiCard = memo(function KpiCard({
   title,
   value,
   hint,
@@ -53,7 +57,7 @@ function KpiCard({
       </CardContent>
     </Card>
   );
-}
+});
 
 export function DashboardHome() {
   const { firebaseUser, profile } = useAuth();
@@ -77,11 +81,27 @@ export function DashboardHome() {
     };
   }, [uid, isAdmin]);
 
-  const todayStart = startOfDay(new Date());
-  const todayEnd = endOfDay(new Date());
-  const weekAgo = startOfDay(subDays(new Date(), 7));
+  /**
+   * PERFORMANCE: Consolidating date thresholds into useMemo.
+   * IMPACT: Stabilizes dependencies for the stats useMemo, preventing redundant calculations on every render.
+   */
+  const { todayStart, todayEnd, weekAgo, thirtyDaysAgo } = useMemo(() => {
+    const now = new Date();
+    return {
+      todayStart: startOfDay(now),
+      todayEnd: endOfDay(now),
+      weekAgo: startOfDay(subDays(now, 7)),
+      thirtyDaysAgo: startOfDay(subDays(now, 30)),
+    };
+  }, []);
 
+  /**
+   * PERFORMANCE: Memoizing stats and consolidating filters.
+   * IMPACT: Prevents expensive re-calculations of dashboard metrics and reduces array traversals.
+   */
   const stats = useMemo(() => {
+    const openTasks = tasks.filter((t) => t.status === "open");
+
     const leadsToday = leads.filter((l) => {
       const c = l.createdAt;
       if (!c) return false;
@@ -90,9 +110,8 @@ export function DashboardHome() {
 
     const callsToday = 0;
 
-    const followUpsToday = tasks.filter(
+    const followUpsToday = openTasks.filter(
       (t) =>
-        t.status === "open" &&
         t.dueDate &&
         !isBefore(t.dueDate, todayStart) &&
         !isAfter(t.dueDate, todayEnd)
@@ -108,7 +127,7 @@ export function DashboardHome() {
     const corpOpenedMonth = deals.filter((d) => {
       const c = d.createdAt;
       if (!c) return false;
-      return !isBefore(c, startOfDay(subDays(new Date(), 30)));
+      return !isBefore(c, thirtyDaysAgo);
     }).length;
 
     const pipelineValue = deals.reduce((acc, d) => acc + (d.estimatedValue ?? 0), 0);
@@ -121,11 +140,8 @@ export function DashboardHome() {
       return isBefore(last, subDays(new Date(), 3));
     });
 
-    const overdueTasks = tasks.filter(
-      (t) =>
-        t.status === "open" &&
-        t.dueDate &&
-        isBefore(t.dueDate, todayStart)
+    const overdueTasks = openTasks.filter(
+      (t) => t.dueDate && isBefore(t.dueDate, todayStart)
     );
 
     return {
@@ -137,8 +153,9 @@ export function DashboardHome() {
       pipelineValue,
       hotSilent,
       overdueTasks,
+      openTasks,
     };
-  }, [leads, tasks, deals, todayStart, todayEnd, weekAgo]);
+  }, [leads, tasks, deals, todayStart, todayEnd, weekAgo, thirtyDaysAgo]);
 
   return (
     <div className="space-y-8">
@@ -246,11 +263,10 @@ export function DashboardHome() {
             <CardTitle className="text-base">Bugünkü görevler</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
-            {tasks.filter((t) => t.status === "open").length === 0 ? (
+            {stats.openTasks.length === 0 ? (
               <p className="text-muted-foreground">Açık görev yok.</p>
             ) : (
-              tasks
-                .filter((t) => t.status === "open")
+              stats.openTasks
                 .slice(0, 6)
                 .map((t) => (
                   <div
