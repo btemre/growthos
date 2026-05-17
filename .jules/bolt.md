@@ -1,0 +1,3 @@
+## 2025-05-15 - Unstable useMemo dependencies and redundant filtering
+**Learning:** Defining date thresholds (like `new Date()`) at the component level and using them as `useMemo` dependencies causes the hook to re-run on every render, negating its performance benefits. Additionally, repeated filtering of the same array in JSX is an anti-pattern that can be solved by memoizing the filtered subset once.
+**Action:** Always move volatile dependency calculations (like those involving `new Date()`) inside `useMemo` or `useEffect` when they are only needed within that scope. Pre-calculate and return filtered subsets (like `openTasks`) from `useMemo` to keep the render path clean and efficient.
