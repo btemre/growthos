@@ -1,0 +1,3 @@
+## 2024-05-17 - Improved Button Loading and Sidebar Accessibility
+**Learning:** Adding a generic `loading` prop to the core `Button` component simplifies handling async states across the app while ensuring consistent UX and accessibility (using `aria-busy`). Managing icon-only buttons by replacing content with a spinner prevents layout shifts. Missing ARIA labels on common sidebar/header icons is a frequent accessibility gap that is easy to fix.
+**Action:** Always check core components for common UX needs (like loading states) before implementing them locally, and audit icon-only buttons for missing ARIA labels during any UI work.
