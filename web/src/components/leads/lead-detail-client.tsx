@@ -527,10 +527,10 @@ export function LeadDetailClient({ leadId }: { leadId: string }) {
               </p>
               <Button
                 type="button"
-                disabled={aiBusy}
+                loading={aiBusy}
                 onClick={() => void fetchAiInsight()}
               >
-                {aiBusy ? "Çalışıyor…" : "Öneri üret"}
+                Öneri üret
               </Button>
               {aiSummary ? (
                 <div className="space-y-2">
@@ -789,10 +789,10 @@ export function LeadDetailClient({ leadId }: { leadId: string }) {
           <DialogFooter>
             <Button
               type="button"
-              disabled={channelBusy}
+              loading={channelBusy}
               onClick={() => void sendEmailOutbound()}
             >
-              {channelBusy ? "Gönderiliyor…" : "Gönder"}
+              Gönder
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -819,10 +819,10 @@ export function LeadDetailClient({ leadId }: { leadId: string }) {
           <DialogFooter>
             <Button
               type="button"
-              disabled={channelBusy}
+              loading={channelBusy}
               onClick={() => void sendWhatsAppOutbound()}
             >
-              {channelBusy ? "Gönderiliyor…" : "Gönder"}
+              Gönder
             </Button>
           </DialogFooter>
         </DialogContent>
