@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   endOfDay,
   format,
@@ -28,7 +28,12 @@ import { subscribeTasksForUser } from "@/lib/firestore/tasks";
 import { subscribeDealsForUser } from "@/lib/firestore/deals";
 import type { Deal, Lead, Task } from "@/types/models";
 
-function KpiCard({
+/**
+ * PERFORMANCE: Memoized KpiCard to prevent unnecessary re-renders when dashboard data
+ * refreshes but the specific KPI value remains unchanged.
+ * IMPACT: Reduces total re-renders for the 6-8 cards on the home screen.
+ */
+const KpiCard = React.memo(function KpiCard({
   title,
   value,
   hint,
@@ -53,7 +58,7 @@ function KpiCard({
       </CardContent>
     </Card>
   );
-}
+});
 
 export function DashboardHome() {
   const { firebaseUser, profile } = useAuth();
@@ -77,11 +82,26 @@ export function DashboardHome() {
     };
   }, [uid, isAdmin]);
 
-  const todayStart = startOfDay(new Date());
-  const todayEnd = endOfDay(new Date());
-  const weekAgo = startOfDay(subDays(new Date(), 7));
+  /**
+   * PERFORMANCE: Stable date thresholds.
+   * We calculate these once per day (triggered by todayKey) to ensure
+   * useMemo dependencies remain stable and expensive filtering only runs when necessary.
+   */
+  const todayKey = format(new Date(), "yyyy-MM-dd");
+  const dateThresholds = useMemo(() => {
+    const now = new Date();
+    return {
+      todayStart: startOfDay(now),
+      todayEnd: endOfDay(now),
+      weekAgo: startOfDay(subDays(now, 7)),
+      monthAgo: startOfDay(subDays(now, 30)),
+      threeDaysAgo: subDays(now, 3),
+    };
+  }, [todayKey]);
 
   const stats = useMemo(() => {
+    const { todayStart, todayEnd, weekAgo, monthAgo, threeDaysAgo } = dateThresholds;
+
     const leadsToday = leads.filter((l) => {
       const c = l.createdAt;
       if (!c) return false;
@@ -90,9 +110,10 @@ export function DashboardHome() {
 
     const callsToday = 0;
 
-    const followUpsToday = tasks.filter(
+    const openTasks = tasks.filter((t) => t.status === "open");
+
+    const followUpsToday = openTasks.filter(
       (t) =>
-        t.status === "open" &&
         t.dueDate &&
         !isBefore(t.dueDate, todayStart) &&
         !isAfter(t.dueDate, todayEnd)
@@ -108,7 +129,7 @@ export function DashboardHome() {
     const corpOpenedMonth = deals.filter((d) => {
       const c = d.createdAt;
       if (!c) return false;
-      return !isBefore(c, startOfDay(subDays(new Date(), 30)));
+      return !isBefore(c, monthAgo);
     }).length;
 
     const pipelineValue = deals.reduce((acc, d) => acc + (d.estimatedValue ?? 0), 0);
@@ -118,14 +139,11 @@ export function DashboardHome() {
       if (l.score < 50) return false;
       const last = l.lastContactAt;
       if (!last) return true;
-      return isBefore(last, subDays(new Date(), 3));
+      return isBefore(last, threeDaysAgo);
     });
 
-    const overdueTasks = tasks.filter(
-      (t) =>
-        t.status === "open" &&
-        t.dueDate &&
-        isBefore(t.dueDate, todayStart)
+    const overdueTasks = openTasks.filter(
+      (t) => t.dueDate && isBefore(t.dueDate, todayStart)
     );
 
     return {
@@ -137,8 +155,9 @@ export function DashboardHome() {
       pipelineValue,
       hotSilent,
       overdueTasks,
+      openTasks,
     };
-  }, [leads, tasks, deals, todayStart, todayEnd, weekAgo]);
+  }, [leads, tasks, deals, dateThresholds]);
 
   return (
     <div className="space-y-8">
@@ -246,11 +265,10 @@ export function DashboardHome() {
             <CardTitle className="text-base">Bugünkü görevler</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
-            {tasks.filter((t) => t.status === "open").length === 0 ? (
+            {stats.openTasks.length === 0 ? (
               <p className="text-muted-foreground">Açık görev yok.</p>
             ) : (
-              tasks
-                .filter((t) => t.status === "open")
+              stats.openTasks
                 .slice(0, 6)
                 .map((t) => (
                   <div
