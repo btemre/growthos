@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useId } from "react";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
 import { toast } from "sonner";
@@ -39,6 +39,10 @@ export function TasksPageClient() {
   const [leadId, setLeadId] = useState<string>("");
   const uid = firebaseUser?.uid ?? "";
   const isAdmin = profile?.role === "admin";
+
+  const titleId = useId();
+  const leadIdFieldId = useId();
+  const dueId = useId();
 
   useEffect(() => {
     if (!uid) return;
@@ -105,21 +109,22 @@ export function TasksPageClient() {
               </DialogHeader>
               <div className="grid gap-3 py-4">
                 <div className="space-y-2">
-                  <Label>Başlık</Label>
+                  <Label htmlFor={titleId}>Başlık</Label>
                   <Input
+                    id={titleId}
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     required
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Bağlı lead</Label>
+                  <Label htmlFor={leadIdFieldId}>Bağlı lead</Label>
                   <Select
                     value={leadId}
                     onValueChange={(v) => setLeadId(v ?? "")}
                     required
                   >
-                    <SelectTrigger>
+                    <SelectTrigger id={leadIdFieldId}>
                       <SelectValue placeholder="Lead seçin" />
                     </SelectTrigger>
                     <SelectContent>
@@ -132,8 +137,9 @@ export function TasksPageClient() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Bitiş (opsiyonel)</Label>
+                  <Label htmlFor={dueId}>Bitiş (opsiyonel)</Label>
                   <Input
+                    id={dueId}
                     type="datetime-local"
                     value={due}
                     onChange={(e) => setDue(e.target.value)}
