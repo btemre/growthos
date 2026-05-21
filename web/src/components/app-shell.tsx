@@ -108,8 +108,9 @@ export function AppShell({
             size="icon"
             className="lg:hidden"
             onClick={() => setMobileOpen(false)}
+            aria-label="Menüyü kapat"
           >
-            <X className="size-4" />
+            <X className="size-4" aria-hidden="true" />
           </Button>
         </div>
         <ScrollArea className="flex-1 px-2 py-3">
@@ -161,8 +162,9 @@ export function AppShell({
             size="icon"
             className="lg:hidden"
             onClick={() => setMobileOpen(true)}
+            aria-label="Menüyü aç"
           >
-            <Menu className="size-5" />
+            <Menu className="size-5" aria-hidden="true" />
           </Button>
           <div className="min-w-0 flex-1">
             <h1 className="truncate text-lg font-semibold tracking-tight">
@@ -175,8 +177,9 @@ export function AppShell({
             className="hidden xl:flex"
             onClick={() => setShowRight((v) => !v)}
             title="Sağ panel"
+            aria-label="Sağ paneli aç/kapat"
           >
-            <PanelRight className="size-4" />
+            <PanelRight className="size-4" aria-hidden="true" />
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger
@@ -184,6 +187,7 @@ export function AppShell({
                 buttonVariants({ variant: "ghost" }),
                 "gap-2 px-2 data-[popup-open]:bg-muted"
               )}
+              aria-label="Kullanıcı menüsü"
             >
               <Avatar className="size-8">
                 <AvatarFallback className="bg-primary/15 text-xs font-medium">
