@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -32,6 +32,12 @@ export function LeadFormDialog({ ownerId }: { ownerId: string }) {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [busy, setBusy] = useState(false);
+
+  const nameId = useId();
+  const typeId = useId();
+  const sourceId = useId();
+  const emailId = useId();
+  const phoneId = useId();
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -71,20 +77,21 @@ export function LeadFormDialog({ ownerId }: { ownerId: string }) {
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="space-y-2">
-              <Label>Ad / görünen ad</Label>
+              <Label htmlFor={nameId}>Ad / görünen ad</Label>
               <Input
+                id={nameId}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
               />
             </div>
             <div className="space-y-2">
-              <Label>Tür</Label>
+              <Label htmlFor={typeId}>Tür</Label>
               <Select
                 value={type}
                 onValueChange={(v) => v && setType(v as LeadType)}
               >
-                <SelectTrigger>
+                <SelectTrigger id={typeId}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -97,12 +104,12 @@ export function LeadFormDialog({ ownerId }: { ownerId: string }) {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Kaynak</Label>
+              <Label htmlFor={sourceId}>Kaynak</Label>
               <Select
                 value={source}
                 onValueChange={(v) => v && setSource(v as LeadSource)}
               >
-                <SelectTrigger>
+                <SelectTrigger id={sourceId}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -115,23 +122,33 @@ export function LeadFormDialog({ ownerId }: { ownerId: string }) {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>E-posta</Label>
+              <Label htmlFor={emailId}>E-posta</Label>
               <Input
+                id={emailId}
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />
             </div>
             <div className="space-y-2">
-              <Label>Telefon</Label>
-              <Input value={phone} onChange={(e) => setPhone(e.target.value)} />
+              <Label htmlFor={phoneId}>Telefon</Label>
+              <Input
+                id={phoneId}
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+              />
             </div>
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={busy}
+              onClick={() => setOpen(false)}
+            >
               İptal
             </Button>
-            <Button type="submit" disabled={busy}>
+            <Button type="submit" loading={busy}>
               Kaydet
             </Button>
           </DialogFooter>
