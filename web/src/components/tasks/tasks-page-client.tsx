@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { addDays, format, isBefore, startOfDay, startOfWeek, endOfWeek } from "date-fns";
 import { tr } from "date-fns/locale";
@@ -36,12 +36,12 @@ import { completeTask, createTask, subscribeTasksForUser } from "@/lib/firestore
 import { taskFormSchema, type TaskFormValues } from "@/lib/schemas/task";
 import type { Lead, Task } from "@/types/models";
 
-function TaskRow({
+const TaskRow = memo(function TaskRow({
   task,
   onComplete,
 }: {
   task: Task;
-  onComplete: () => void;
+  onComplete: (task: Task) => void;
 }) {
   return (
     <Card className="border-border/80">
@@ -64,14 +64,14 @@ function TaskRow({
             : "—"}
         </span>
         {task.status === "open" ? (
-          <Button size="sm" variant="outline" onClick={onComplete}>
+          <Button size="sm" variant="outline" onClick={() => onComplete(task)}>
             Tamamla
           </Button>
         ) : null}
       </CardContent>
     </Card>
   );
-}
+});
 
 export function TasksPageClient() {
   const searchParams = useSearchParams();
@@ -118,9 +118,21 @@ export function TasksPageClient() {
     [leads]
   );
 
-  const todayStart = startOfDay(new Date());
-  const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
-  const weekEnd = endOfWeek(new Date(), { weekStartsOn: 1 });
+  // Stabilize date thresholds by using a date key (formatted as 'yyyy-MM-dd')
+  // This avoids recalculating thresholds on every render, only when the day changes.
+  const todayKey = format(new Date(), "yyyy-MM-dd");
+
+  const { todayStart, weekStart, weekEnd } = useMemo(() => {
+    // Using todayKey to ensure thresholds are recalculated when the date changes,
+    // while creating the date object in a way that respects the local timezone.
+    const [y, m, d] = todayKey.split("-").map(Number);
+    const now = new Date(y, m - 1, d);
+    return {
+      todayStart: startOfDay(now),
+      weekStart: startOfWeek(now, { weekStartsOn: 1 }),
+      weekEnd: endOfWeek(now, { weekStartsOn: 1 }),
+    };
+  }, [todayKey]);
 
   const grouped = useMemo(() => {
     let list = tasks;
@@ -185,7 +197,7 @@ export function TasksPageClient() {
     }
   }
 
-  async function complete(t: Task) {
+  const complete = useCallback(async (t: Task) => {
     try {
       const db = getFirebaseDb();
       await completeTask(db, t.id);
@@ -194,16 +206,20 @@ export function TasksPageClient() {
       console.error(e);
       toast.error("İşlem başarısız");
     }
-  }
+  }, []);
 
-  const sections = filterOverdue
-    ? [{ title: "Geciken", items: grouped.overdue }]
-    : [
-        { title: "Geciken", items: grouped.overdue },
-        { title: "Bugün", items: grouped.today },
-        { title: "Bu hafta", items: grouped.thisWeek },
-        { title: "Diğer açık", items: grouped.later },
-      ];
+  const sections = useMemo(
+    () =>
+      filterOverdue
+        ? [{ title: "Geciken", items: grouped.overdue }]
+        : [
+            { title: "Geciken", items: grouped.overdue },
+            { title: "Bugün", items: grouped.today },
+            { title: "Bu hafta", items: grouped.thisWeek },
+            { title: "Diğer açık", items: grouped.later },
+          ],
+    [filterOverdue, grouped]
+  );
 
   return (
     <div className="space-y-6">
@@ -292,7 +308,7 @@ export function TasksPageClient() {
               </h3>
               <div className="grid gap-3">
                 {sec.items.map((t) => (
-                  <TaskRow key={t.id} task={t} onComplete={() => void complete(t)} />
+                  <TaskRow key={t.id} task={t} onComplete={complete} />
                 ))}
               </div>
             </div>
