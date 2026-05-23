@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useId } from "react";
 import { useSearchParams } from "next/navigation";
 import { addDays, format, isBefore, startOfDay, startOfWeek, endOfWeek } from "date-fns";
 import { tr } from "date-fns/locale";
@@ -81,6 +81,11 @@ export function TasksPageClient() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [open, setOpen] = useState(false);
   const uid = firebaseUser?.uid ?? "";
+
+  const titleId = useId();
+  const leadIdFieldId = useId();
+  const dueDateId = useId();
+  const priorityId = useId();
   const isAdmin = profile?.role === "admin";
 
   const {
@@ -222,19 +227,19 @@ export function TasksPageClient() {
                 </DialogHeader>
                 <div className="grid gap-3 py-4">
                   <div className="space-y-2">
-                    <Label>Başlık</Label>
-                    <Input {...register("title")} />
+                    <Label htmlFor={titleId}>Başlık</Label>
+                    <Input id={titleId} {...register("title")} />
                     {errors.title ? (
                       <p className="text-xs text-destructive">{errors.title.message}</p>
                     ) : null}
                   </div>
                   <div className="space-y-2">
-                    <Label>Bağlı lead</Label>
+                    <Label htmlFor={leadIdFieldId}>Bağlı lead</Label>
                     <Select
                       value={leadId}
                       onValueChange={(v) => setValue("leadId", v ?? "")}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger id={leadIdFieldId}>
                         <SelectValue placeholder="Lead seçin" />
                       </SelectTrigger>
                       <SelectContent>
@@ -250,18 +255,18 @@ export function TasksPageClient() {
                     ) : null}
                   </div>
                   <div className="space-y-2">
-                    <Label>Bitiş</Label>
-                    <Input type="datetime-local" {...register("dueDate")} />
+                    <Label htmlFor={dueDateId}>Bitiş</Label>
+                    <Input id={dueDateId} type="datetime-local" {...register("dueDate")} />
                   </div>
                   <div className="space-y-2">
-                    <Label>Öncelik</Label>
+                    <Label htmlFor={priorityId}>Öncelik</Label>
                     <Select
                       value={watch("priority")}
                       onValueChange={(v) =>
                         setValue("priority", (v as "low" | "medium" | "high") ?? "medium")
                       }
                     >
-                      <SelectTrigger>
+                      <SelectTrigger id={priorityId}>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -273,7 +278,7 @@ export function TasksPageClient() {
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button type="submit" disabled={isSubmitting}>
+                  <Button type="submit" loading={isSubmitting}>
                     Oluştur
                   </Button>
                 </DialogFooter>
