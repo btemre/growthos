@@ -1,6 +1,7 @@
 import {
   addDoc,
   collection,
+  limit,
   onSnapshot,
   orderBy,
   query,
@@ -49,6 +50,31 @@ export function subscribeActivitiesInDateRange(
   return onSnapshot(
     q,
     (snap) => onData(snap.docs.map((d) => activityFromDoc(d.id, d.data()))),
+    (err) => onError?.(err as Error)
+  );
+}
+
+export function subscribeRecentActivities(
+  db: Firestore,
+  options: { isAdmin: boolean; userId: string; max?: number },
+  onData: (rows: Activity[]) => void,
+  onError?: (e: Error) => void
+): Unsubscribe {
+  const max = options.max ?? 20;
+  const q = query(
+    collection(db, "activities"),
+    orderBy("activityDate", "desc"),
+    limit(max)
+  );
+  return onSnapshot(
+    q,
+    (snap) => {
+      let rows = snap.docs.map((d) => activityFromDoc(d.id, d.data()));
+      if (!options.isAdmin) {
+        rows = rows.filter((a) => a.userId === options.userId);
+      }
+      onData(rows.slice(0, max));
+    },
     (err) => onError?.(err as Error)
   );
 }

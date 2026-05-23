@@ -1,29 +1,28 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import {
-  BarChart3,
-  Briefcase,
-  CalendarDays,
-  ClipboardList,
-  FileText,
-  GraduationCap,
-  LayoutDashboard,
-  LogOut,
-  Menu,
-  PanelRight,
-  Settings,
-  Users,
-  X,
-} from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { LogOut, Menu, PanelRight, X } from "lucide-react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/auth-context";
 import { LABELS } from "@/lib/constants";
+import {
+  canAccessRoute,
+  getNavForRole,
+  getRouteMeta,
+} from "@/lib/navigation";
 import { formatVersionLabel, getBuildInfo } from "@/lib/build-info";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -35,20 +34,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-const nav = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/leads", label: "Lead'ler", icon: Users },
-  { href: "/pipeline/education", label: "Eğitim Pipeline", icon: GraduationCap },
-  { href: "/pipeline/corporate", label: "Kurumsal Pipeline", icon: Briefcase },
-  { href: "/tasks", label: "Görevler", icon: ClipboardList },
-  { href: "/calendar", label: "Takvim", icon: CalendarDays },
-  { href: "/programs", label: "Programlar", icon: GraduationCap },
-  { href: "/proposals", label: "Teklifler", icon: FileText },
-  { href: "/team", label: "Personel", icon: Users },
-  { href: "/reports", label: "Raporlar", icon: BarChart3 },
-  { href: "/settings", label: "Ayarlar", icon: Settings },
-];
-
 export function AppShell({
   children,
   rightPanel,
@@ -57,9 +42,20 @@ export function AppShell({
   rightPanel?: ReactNode;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { profile, logout } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [showRight, setShowRight] = useState(true);
+
+  const nav = getNavForRole(profile?.role);
+  const routeMeta = getRouteMeta(pathname);
+
+  useEffect(() => {
+    if (!profile?.role) return;
+    if (!canAccessRoute(pathname, profile.role)) {
+      router.replace("/dashboard");
+    }
+  }, [pathname, profile?.role, router]);
 
   const initials =
     profile?.name
@@ -77,7 +73,6 @@ export function AppShell({
 
   return (
     <div className="flex min-h-screen bg-background">
-      {/* Mobile overlay */}
       {mobileOpen ? (
         <button
           type="button"
@@ -113,7 +108,7 @@ export function AppShell({
           </Button>
         </div>
         <ScrollArea className="flex-1 px-2 py-3">
-          <nav className="flex flex-col gap-0.5">
+          <nav className="flex flex-col gap-0.5" aria-label="Ana menü">
             {nav.map((item) => {
               const active =
                 pathname === item.href || pathname.startsWith(item.href + "/");
@@ -130,7 +125,7 @@ export function AppShell({
                       : "text-sidebar-foreground/80 hover:bg-sidebar-accent/60"
                   )}
                 >
-                  <Icon className="size-4 shrink-0 opacity-80" />
+                  <Icon className="size-4 shrink-0 opacity-80" aria-hidden />
                   <span className="flex-1 truncate">{item.label}</span>
                 </Link>
               );
@@ -161,23 +156,44 @@ export function AppShell({
             size="icon"
             className="lg:hidden"
             onClick={() => setMobileOpen(true)}
+            aria-label="Menüyü aç"
           >
             <Menu className="size-5" />
           </Button>
           <div className="min-w-0 flex-1">
+            <Breadcrumb>
+              <BreadcrumbList>
+                {routeMeta.parent ? (
+                  <>
+                    <BreadcrumbItem>
+                      <BreadcrumbLink href={routeMeta.parent.href}>
+                        {routeMeta.parent.label}
+                      </BreadcrumbLink>
+                    </BreadcrumbItem>
+                    <BreadcrumbSeparator />
+                  </>
+                ) : null}
+                <BreadcrumbItem>
+                  <BreadcrumbPage>{routeMeta.title}</BreadcrumbPage>
+                </BreadcrumbItem>
+              </BreadcrumbList>
+            </Breadcrumb>
             <h1 className="truncate text-lg font-semibold tracking-tight">
-              Eğitim &amp; İş Geliştirme Paneli
+              {routeMeta.title}
             </h1>
           </div>
-          <Button
-            variant="outline"
-            size="icon-sm"
-            className="hidden xl:flex"
-            onClick={() => setShowRight((v) => !v)}
-            title="Sağ panel"
-          >
-            <PanelRight className="size-4" />
-          </Button>
+          {rightPanel ? (
+            <Button
+              variant="outline"
+              size="icon-sm"
+              className="hidden xl:flex"
+              onClick={() => setShowRight((v) => !v)}
+              title="Sağ panel"
+              aria-label="Sağ paneli aç/kapat"
+            >
+              <PanelRight className="size-4" />
+            </Button>
+          ) : null}
           <DropdownMenu>
             <DropdownMenuTrigger
               className={cn(

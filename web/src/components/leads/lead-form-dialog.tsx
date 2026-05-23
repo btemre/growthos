@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,40 +24,52 @@ import {
 import { LEAD_SOURCES, LEAD_TYPES, LABELS } from "@/lib/constants";
 import { getFirebaseDb } from "@/lib/firebase/client";
 import { createLead } from "@/lib/firestore/leads";
+import {
+  leadFormSchema,
+  type LeadFormValues,
+} from "@/lib/schemas/lead";
 import type { LeadSource, LeadType } from "@/types/models";
 
 export function LeadFormDialog({ ownerId }: { ownerId: string }) {
   const [open, setOpen] = useState(false);
-  const [name, setName] = useState("");
-  const [type, setType] = useState<LeadType>("education_candidate");
-  const [source, setSource] = useState<LeadSource>("whatsapp");
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
-  const [busy, setBusy] = useState(false);
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    watch,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<LeadFormValues>({
+    resolver: zodResolver(leadFormSchema),
+    defaultValues: {
+      name: "",
+      type: "education_candidate",
+      source: "whatsapp",
+      email: "",
+      phone: "",
+    },
+  });
 
-  async function onSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setBusy(true);
+  const type = watch("type");
+  const source = watch("source");
+
+  async function onSubmit(values: LeadFormValues) {
     try {
       const db = getFirebaseDb();
       await createLead(db, {
         ownerId,
-        type,
-        name: name.trim(),
-        source,
-        email: email.trim() || undefined,
-        phone: phone.trim() || undefined,
+        type: values.type,
+        name: values.name.trim(),
+        source: values.source,
+        email: values.email?.trim() || undefined,
+        phone: values.phone?.trim() || undefined,
       });
       toast.success("Lead oluşturuldu");
       setOpen(false);
-      setName("");
-      setEmail("");
-      setPhone("");
+      reset();
     } catch (err) {
       console.error(err);
       toast.error("Kaydedilemedi");
-    } finally {
-      setBusy(false);
     }
   }
 
@@ -65,24 +79,23 @@ export function LeadFormDialog({ ownerId }: { ownerId: string }) {
         Yeni lead
       </Button>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
-        <form onSubmit={onSubmit}>
+        <form onSubmit={handleSubmit(onSubmit)}>
           <DialogHeader>
             <DialogTitle>Yeni lead</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="space-y-2">
-              <Label>Ad / görünen ad</Label>
-              <Input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-              />
+              <Label htmlFor="lead-name">Ad / görünen ad</Label>
+              <Input id="lead-name" {...register("name")} />
+              {errors.name ? (
+                <p className="text-xs text-destructive">{errors.name.message}</p>
+              ) : null}
             </div>
             <div className="space-y-2">
               <Label>Tür</Label>
               <Select
                 value={type}
-                onValueChange={(v) => v && setType(v as LeadType)}
+                onValueChange={(v) => v && setValue("type", v as LeadType)}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -100,7 +113,7 @@ export function LeadFormDialog({ ownerId }: { ownerId: string }) {
               <Label>Kaynak</Label>
               <Select
                 value={source}
-                onValueChange={(v) => v && setSource(v as LeadSource)}
+                onValueChange={(v) => v && setValue("source", v as LeadSource)}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -115,23 +128,22 @@ export function LeadFormDialog({ ownerId }: { ownerId: string }) {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>E-posta</Label>
-              <Input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
+              <Label htmlFor="lead-email">E-posta</Label>
+              <Input id="lead-email" type="email" {...register("email")} />
+              {errors.email ? (
+                <p className="text-xs text-destructive">{errors.email.message}</p>
+              ) : null}
             </div>
             <div className="space-y-2">
-              <Label>Telefon</Label>
-              <Input value={phone} onChange={(e) => setPhone(e.target.value)} />
+              <Label htmlFor="lead-phone">Telefon</Label>
+              <Input id="lead-phone" {...register("phone")} />
             </div>
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               İptal
             </Button>
-            <Button type="submit" disabled={busy}>
+            <Button type="submit" disabled={isSubmitting}>
               Kaydet
             </Button>
           </DialogFooter>

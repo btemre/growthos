@@ -9,7 +9,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { sendPasswordResetEmail } from "firebase/auth";
 import { useAuth } from "@/contexts/auth-context";
+import { getFirebaseAuth } from "@/lib/firebase/client";
 
 export default function LoginPage() {
   const { signIn, signUp, needsFirebaseConfig, loading, firebaseUser } = useAuth();
@@ -104,7 +106,7 @@ export default function LoginPage() {
             Growth Operating System
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Eğitim ve iş geliştirme paneline giriş
+            Kim kimi aradı, sıradaki adım ne — tek panelden yönetin.
           </p>
         </div>
 
@@ -143,6 +145,23 @@ export default function LoginPage() {
                   </div>
                   <Button type="submit" className="w-full" disabled={busy || loading}>
                     Giriş yap
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="link"
+                    className="w-full text-xs"
+                    disabled={busy || !email.trim()}
+                    onClick={async () => {
+                      try {
+                        await sendPasswordResetEmail(getFirebaseAuth(), email.trim());
+                        toast.success("Sıfırlama bağlantısı e-postanıza gönderildi");
+                      } catch (err) {
+                        console.error(err);
+                        toast.error("E-posta gönderilemedi");
+                      }
+                    }}
+                  >
+                    Şifremi unuttum
                   </Button>
                 </form>
               </TabsContent>

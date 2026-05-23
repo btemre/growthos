@@ -1,6 +1,8 @@
 import {
   addDoc,
   collection,
+  doc,
+  getDoc,
   getDocs,
   orderBy,
   query,
@@ -24,6 +26,15 @@ function companyFromDoc(id: string, data: Record<string, unknown>): Company {
     createdAt: toDate(data.createdAt),
     updatedAt: toDate(data.updatedAt),
   };
+}
+
+export async function getCompany(
+  db: Firestore,
+  companyId: string
+): Promise<Company | null> {
+  const snap = await getDoc(doc(db, "companies", companyId));
+  if (!snap.exists()) return null;
+  return companyFromDoc(snap.id, snap.data() as Record<string, unknown>);
 }
 
 export async function listCompanies(db: Firestore): Promise<Company[]> {

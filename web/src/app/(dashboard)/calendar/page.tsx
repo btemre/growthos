@@ -1,5 +1,5 @@
-import { PlaceholderPage } from "@/components/placeholder-page";
+import { CalendarPageClient } from "@/components/calendar/calendar-page-client";
 
 export default function CalendarPage() {
-  return <PlaceholderPage title="Takvim" />;
+  return <CalendarPageClient />;
 }

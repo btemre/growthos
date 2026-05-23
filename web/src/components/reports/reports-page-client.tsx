@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import {
   endOfDay,
   endOfWeek,
-  isWithinInterval,
   startOfDay,
   startOfMonth,
   startOfWeek,
@@ -39,7 +38,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { PageHeader } from "@/components/shared/page-header";
 import { useAuth } from "@/contexts/auth-context";
+import { downloadCsv, inRange } from "@/lib/report-utils";
 import { CORPORATE_DEAL_STAGES, LABELS, LEAD_SOURCES } from "@/lib/constants";
 import { getFirebaseDb } from "@/lib/firebase/client";
 import { subscribeActivitiesInDateRange } from "@/lib/firestore/activities";
@@ -60,32 +61,7 @@ import type {
   Task,
 } from "@/types/models";
 
-type Preset = "week" | "month" | "30d" | "custom";
-
-function inRange(
-  d: Date | null | undefined,
-  start: Date,
-  end: Date
-): boolean {
-  if (!d) return false;
-  return isWithinInterval(d, { start, end });
-}
-
-function downloadCsv(filename: string, rows: string[][]) {
-  const esc = (cell: string) => {
-    if (/[",\n]/.test(cell)) return `"${cell.replace(/"/g, '""')}"`;
-    return cell;
-  };
-  const body = rows.map((r) => r.map(esc).join(",")).join("\n");
-  const bom = "\uFEFF";
-  const blob = new Blob([bom + body], { type: "text/csv;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
-}
+type Preset = "week" | "7d" | "month" | "30d" | "custom";
 
 export function ReportsPageClient() {
   const { firebaseUser, profile } = useAuth();
@@ -118,6 +94,9 @@ export function ReportsPageClient() {
         start: startOfDay(new Date(customStart)),
         end: endOfDay(new Date(customEnd)),
       };
+    }
+    if (preset === "7d") {
+      return { start: startOfDay(subDays(now, 6)), end: endOfDay(now) };
     }
     if (preset === "month") {
       return { start: startOfMonth(now), end: endOfDay(now) };
@@ -334,6 +313,10 @@ export function ReportsPageClient() {
     return rows.filter((r) => r.total > 0).sort((a, b) => b.pct - a.pct);
   }, [leads]);
 
+  const csvRowCount = useMemo(() => {
+    return 12 + leadsInRange.length;
+  }, [leadsInRange.length]);
+
   function exportCsv() {
     const rows: string[][] = [
       ["Rapor", "GOS"],
@@ -371,15 +354,10 @@ export function ReportsPageClient() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h2 className="font-[family-name:var(--font-heading)] text-2xl font-semibold">
-            Raporlar
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            Tarih aralığına göre özet metrikler, kaynak dağılımı ve dışa aktarma.
-          </p>
-        </div>
+      <PageHeader
+        title="Raporlar"
+        description="Tarih aralığına göre özet metrikler, kaynak dağılımı ve dışa aktarma."
+        action={
         <div className="flex flex-wrap items-end gap-3">
           <div className="space-y-1.5">
             <Label className="text-xs">Dönem</Label>
@@ -392,6 +370,7 @@ export function ReportsPageClient() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="week">Bu hafta</SelectItem>
+                <SelectItem value="7d">Son 7 gün</SelectItem>
                 <SelectItem value="month">Bu ay</SelectItem>
                 <SelectItem value="30d">Son 30 gün</SelectItem>
                 <SelectItem value="custom">Özel</SelectItem>
@@ -418,12 +397,13 @@ export function ReportsPageClient() {
               </div>
             </>
           ) : null}
-          <Button type="button" variant="outline" size="sm" onClick={exportCsv}>
+          <Button type="button" size="sm" onClick={exportCsv}>
             <Download className="mr-1 size-4" />
-            CSV indir
+            CSV indir ({csvRowCount} satır)
           </Button>
         </div>
-      </div>
+        }
+      />
 
       <p className="text-xs text-muted-foreground">
         Seçili aralık:{" "}

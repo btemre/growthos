@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageHeader } from "@/components/shared/page-header";
+import { EmptyState } from "@/components/shared/empty-state";
 import { useAuth } from "@/contexts/auth-context";
 import { LABELS } from "@/lib/constants";
 import { getFirebaseDb } from "@/lib/firebase/client";
@@ -91,14 +93,16 @@ export function TeamPageClient() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="font-[family-name:var(--font-heading)] text-2xl font-semibold">
-          Personel performans özeti
-        </h2>
-        <p className="text-sm text-muted-foreground">
-          Lead sahipliği, açık görev ve kurumsal pipeline katkısı (MVP toplulaştırma).
-        </p>
-      </div>
+      <PageHeader
+        title="Personel performans özeti"
+        description="Lead sahipliği, açık görev ve kurumsal pipeline katkısı."
+      />
+      {users.length === 0 ? (
+        <EmptyState
+          title="Kullanıcı bulunamadı"
+          description="Giriş yapan kullanıcılar Firestore'da profil olarak oluşturulur."
+        />
+      ) : (
       <div className="grid gap-4 md:grid-cols-2">
         {users.map((u) => {
           const s = byOwner.get(u.id) ?? {
@@ -139,11 +143,7 @@ export function TeamPageClient() {
           );
         })}
       </div>
-      {users.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          Henüz kullanıcı profili yok. Giriş yapanlar Firestore&apos;da oluşturulur.
-        </p>
-      ) : null}
+      )}
     </div>
   );
 }

@@ -33,6 +33,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { PageHeader } from "@/components/shared/page-header";
+import { EmptyState } from "@/components/shared/empty-state";
+import { ProposalStatusStepper } from "./proposal-status-stepper";
 import { useAuth } from "@/contexts/auth-context";
 import { LABELS, PROPOSAL_STATUSES } from "@/lib/constants";
 import { getFirebaseDb } from "@/lib/firebase/client";
@@ -210,23 +213,19 @@ export function ProposalsPageClient() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="font-[family-name:var(--font-heading)] text-2xl font-semibold">
-            Teklifler
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Kurumsal fırsatlara bağlı teklifler; durum ve geçerlilik takibi.
-          </p>
-        </div>
-        <Button
-          type="button"
-          onClick={openCreate}
-          disabled={deals.length === 0}
-        >
-          Yeni teklif
-        </Button>
-      </div>
+      <PageHeader
+        title="Teklifler"
+        description="Kurumsal fırsatlara bağlı teklifler; durum ve geçerlilik takibi."
+        action={
+          <Button
+            type="button"
+            onClick={openCreate}
+            disabled={deals.length === 0}
+          >
+            Yeni teklif
+          </Button>
+        }
+      />
 
       {deals.length === 0 ? (
         <p className="text-sm text-muted-foreground">
@@ -293,9 +292,9 @@ export function ProposalsPageClient() {
             </TableBody>
           </Table>
           {proposals.length === 0 ? (
-            <p className="p-6 text-sm text-muted-foreground">
-              Henüz teklif yok.
-            </p>
+            <div className="p-6">
+              <EmptyState title="Teklif yok" description="Yeni teklif oluşturun veya fırsat ekleyin." />
+            </div>
           ) : null}
         </CardContent>
       </Card>
@@ -308,6 +307,11 @@ export function ProposalsPageClient() {
                 {editing ? "Teklifi düzenle" : "Yeni teklif"}
               </DialogTitle>
             </DialogHeader>
+            {editing ? (
+              <div className="px-1 pb-2">
+                <ProposalStatusStepper status={status} />
+              </div>
+            ) : null}
             <div className="grid max-h-[60vh] gap-4 overflow-y-auto py-4 pr-1">
               <div className="space-y-2">
                 <Label>Fırsat (deal)</Label>

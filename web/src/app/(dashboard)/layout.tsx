@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
-import { DashboardRightRail } from "@/components/dashboard/dashboard-right-rail";
+import { RouteRightRail } from "@/components/layout/route-right-rail";
 import { useAuth } from "@/contexts/auth-context";
 
 export default function DashboardLayout({
@@ -48,6 +48,6 @@ export default function DashboardLayout({
   }
 
   return (
-    <AppShell rightPanel={<DashboardRightRail />}>{children}</AppShell>
+    <AppShell rightPanel={<RouteRightRail />}>{children}</AppShell>
   );
 }

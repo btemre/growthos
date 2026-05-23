@@ -10,10 +10,17 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
+import { formatDistanceToNow } from "date-fns";
+import { tr } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { PageHeader } from "@/components/shared/page-header";
+import { ConfirmDialog } from "@/components/shared/confirm-dialog";
+import { StatusBadge, leadScoreTone } from "@/components/shared/status-badge";
 import { useAuth } from "@/contexts/auth-context";
+import { useUserDirectory } from "@/hooks/use-user-directory";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { EDUCATION_STAGES, LABELS } from "@/lib/constants";
 import { getFirebaseDb } from "@/lib/firebase/client";
 import { subscribeLeadsForUser, updateLead } from "@/lib/firestore/leads";
@@ -22,11 +29,15 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
+const CRITICAL_STAGES: EducationStage[] = ["enrolled", "dropped", "not_suitable"];
+
 function StageColumn({
   stage,
+  count,
   children,
 }: {
   stage: EducationStage;
+  count: number;
   children: React.ReactNode;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: stage });
@@ -38,8 +49,11 @@ function StageColumn({
         isOver && "border-primary/50 bg-primary/5"
       )}
     >
-      <div className="border-b px-3 py-2">
+      <div className="flex items-center justify-between border-b px-3 py-2">
         <p className="text-sm font-semibold">{LABELS.educationStage[stage]}</p>
+        <Badge variant="secondary" className="text-xs">
+          {count}
+        </Badge>
       </div>
       <ScrollArea className="max-h-[calc(100vh-220px)]">
         <div className="space-y-2 p-2">{children}</div>
@@ -48,7 +62,7 @@ function StageColumn({
   );
 }
 
-function LeadCard({ lead }: { lead: Lead }) {
+function LeadCard({ lead, ownerLabel }: { lead: Lead; ownerLabel: string }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({ id: lead.id });
 
@@ -72,18 +86,28 @@ function LeadCard({ lead }: { lead: Lead }) {
           >
             {lead.name}
           </Link>
-          <div className="flex flex-wrap gap-1">
-            <Badge variant="secondary" className="text-[10px]">
-              {LABELS.source[lead.source]}
-            </Badge>
-            {lead.score >= 60 ? (
-              <Badge
-                variant="outline"
-                className="border-[color:var(--semantic-hot)]/50 text-[10px] text-[color:var(--semantic-hot)]"
-              >
-                sıcak
-              </Badge>
-            ) : null}
+          <div className="flex flex-wrap items-center gap-1">
+            <StatusBadge tone={leadScoreTone(lead.score)} className="text-[10px]">
+              {lead.score}
+            </StatusBadge>
+            {lead.lastContactAt ? (
+              <span className="text-[10px] text-muted-foreground">
+                {formatDistanceToNow(lead.lastContactAt, {
+                  addSuffix: true,
+                  locale: tr,
+                })}
+              </span>
+            ) : (
+              <span className="text-[10px] text-muted-foreground">Temas yok</span>
+            )}
+          </div>
+          <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+            <Avatar className="size-5">
+              <AvatarFallback className="text-[9px]">
+                {ownerLabel.slice(0, 2).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            {ownerLabel}
           </div>
         </CardContent>
       </Card>
@@ -94,8 +118,13 @@ function LeadCard({ lead }: { lead: Lead }) {
 export function EducationBoard() {
   const { firebaseUser, profile } = useAuth();
   const [leads, setLeads] = useState<Lead[]>([]);
+  const [pending, setPending] = useState<{
+    leadId: string;
+    stage: EducationStage;
+  } | null>(null);
   const uid = firebaseUser?.uid ?? "";
   const isAdmin = profile?.role === "admin";
+  const { resolveOwner } = useUserDirectory(isAdmin);
 
   useEffect(() => {
     if (!uid) return;
@@ -120,6 +149,17 @@ export function EducationBoard() {
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } })
   );
 
+  async function applyStage(leadId: string, stage: EducationStage) {
+    try {
+      const db = getFirebaseDb();
+      await updateLead(db, leadId, { educationStage: stage });
+      toast.success("Aşama güncellendi");
+    } catch (err) {
+      console.error(err);
+      toast.error("Güncellenemedi");
+    }
+  }
+
   async function onDragEnd(e: DragEndEvent) {
     const leadId = String(e.active.id);
     const overId = e.over?.id;
@@ -132,40 +172,57 @@ export function EducationBoard() {
       stage = target?.educationStage;
     }
     if (!stage) return;
-    try {
-      const db = getFirebaseDb();
-      await updateLead(db, leadId, { educationStage: stage });
-      toast.success("Aşama güncellendi");
-    } catch (err) {
-      console.error(err);
-      toast.error("Güncellenemedi");
+    if (CRITICAL_STAGES.includes(stage)) {
+      setPending({ leadId, stage });
+      return;
     }
+    await applyStage(leadId, stage);
   }
 
   return (
     <DndContext sensors={sensors} onDragEnd={onDragEnd}>
       <div className="space-y-4">
-        <div>
-          <h2 className="font-[family-name:var(--font-heading)] text-2xl font-semibold">
-            Eğitim satış pipeline
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            Kartları sürükleyerek aşama değiştirin. Sadece &quot;Eğitim adayı&quot; lead
-            türü listelenir.
-          </p>
-        </div>
+        <PageHeader
+          title="Eğitim satış pipeline"
+          description='Kartları sürükleyerek aşama değiştirin. "Kayıt Oldu" ve "Vazgeçti" onay gerektirir.'
+        />
         <div className="w-full overflow-x-auto pb-2">
           <div className="flex min-w-min gap-3 pb-2">
             {EDUCATION_STAGES.map((stage) => (
-              <StageColumn key={stage} stage={stage}>
+              <StageColumn
+                key={stage}
+                stage={stage}
+                count={(byStage.get(stage) ?? []).length}
+              >
                 {(byStage.get(stage) ?? []).map((lead) => (
-                  <LeadCard key={lead.id} lead={lead} />
+                  <LeadCard
+                    key={lead.id}
+                    lead={lead}
+                    ownerLabel={resolveOwner(lead.ownerId, uid)}
+                  />
                 ))}
               </StageColumn>
             ))}
           </div>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={!!pending}
+        onOpenChange={(o) => !o && setPending(null)}
+        title="Aşama değişikliğini onayla"
+        description={
+          pending
+            ? `Lead bu aşamaya taşınacak: ${LABELS.educationStage[pending.stage]}`
+            : undefined
+        }
+        confirmLabel="Onayla"
+        onConfirm={async () => {
+          if (!pending) return;
+          await applyStage(pending.leadId, pending.stage);
+          setPending(null);
+        }}
+      />
     </DndContext>
   );
 }

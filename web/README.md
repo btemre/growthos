@@ -1,36 +1,48 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# GOS Web — Growth Operating System
 
-## Getting Started
+Eğitim, satış ve iş geliştirme yönetim paneli (Next.js 16 + Firebase).
 
-First, run the development server:
+## Kurulum
 
 ```bash
+cd web
+npm install
+cp .env.example .env.local   # Firebase istemci anahtarları
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Giriş: http://localhost:3000/login
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Roller ve menü
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Rol | Erişim |
+|-----|--------|
+| `admin` | Tüm modüller |
+| `education_sales` | Dashboard, lead, eğitim pipeline, görevler, takvim, programlar |
+| `business_dev` | Dashboard, lead, kurumsal pipeline, teklifler, raporlar |
+| `operations` | Lead, pipeline, programlar, teklifler, raporlar |
+| `mentor` | Dashboard, görevler, takvim, programlar |
 
-## Learn More
+Menü filtreleme: `src/lib/navigation.ts`
 
-To learn more about Next.js, take a look at the following resources:
+## Ekran haritası
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- `/dashboard` — KPI ve uyarılar
+- `/leads` — Lead listesi ve detay
+- `/pipeline/education` — Eğitim Kanban
+- `/pipeline/corporate` — Kurumsal Kanban
+- `/tasks` — Görevler
+- `/calendar` — Takvim (görev due tarihleri)
+- `/programs` — Programlar ve kayıtlar
+- `/proposals` — Teklifler
+- `/team` — Personel (yalnızca admin)
+- `/reports` — Raporlar
+- `/settings` — Profil ve tema
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Ortak UI bileşenleri
 
-## Deploy on Vercel
+`src/components/shared/` — `PageHeader`, `EmptyState`, `LoadingSkeleton`, `ConfirmDialog`, `StatusBadge`
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Deploy
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Kök dizinde `DEPLOY.md` ve `npm run deploy:firestore` (Firestore kuralları).

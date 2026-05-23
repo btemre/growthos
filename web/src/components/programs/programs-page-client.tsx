@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
@@ -33,7 +33,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { PageHeader } from "@/components/shared/page-header";
+import { EmptyState } from "@/components/shared/empty-state";
 import { useAuth } from "@/contexts/auth-context";
+import { subscribeRecentEnrollments } from "@/lib/firestore/enrollments";
 import {
   LABELS,
   PROGRAM_STATUSES,
@@ -60,6 +63,10 @@ export function ProgramsPageClient() {
   const [status, setStatus] = useState<ProgramStatus>("draft");
   const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [enrollmentCounts, setEnrollmentCounts] = useState<Map<string, number>>(
+    new Map()
+  );
 
   const isAdmin = profile?.role === "admin";
   const uid = firebaseUser?.uid;
@@ -67,8 +74,24 @@ export function ProgramsPageClient() {
   useEffect(() => {
     if (!uid) return;
     const db = getFirebaseDb();
-    return subscribePrograms(db, setPrograms);
+    const u1 = subscribePrograms(db, setPrograms);
+    const u2 = subscribeRecentEnrollments(db, (rows) => {
+      const m = new Map<string, number>();
+      for (const e of rows) {
+        m.set(e.programId, (m.get(e.programId) ?? 0) + 1);
+      }
+      setEnrollmentCounts(m);
+    });
+    return () => {
+      u1();
+      u2();
+    };
   }, [uid]);
+
+  const filteredPrograms = useMemo(() => {
+    if (statusFilter === "all") return programs;
+    return programs.filter((p) => p.status === statusFilter);
+  }, [programs, statusFilter]);
 
   function openCreate() {
     setEditing(null);
@@ -130,21 +153,38 @@ export function ProgramsPageClient() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="font-[family-name:var(--font-heading)] text-2xl font-semibold">
-            Programlar
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Bootcamp ve eğitim programları; katılımcılar program sayfasından
-            yönetilir.
-          </p>
-        </div>
-        {isAdmin ? (
-          <Button type="button" onClick={openCreate}>
-            Yeni program
+      <PageHeader
+        title="Programlar"
+        description="Bootcamp ve eğitim programları; katılımcılar program sayfasından yönetilir."
+        action={
+          isAdmin ? (
+            <Button type="button" onClick={openCreate}>
+              Yeni program
+            </Button>
+          ) : undefined
+        }
+      />
+
+      <div className="flex flex-wrap gap-2">
+        <Button
+          type="button"
+          size="sm"
+          variant={statusFilter === "all" ? "default" : "outline"}
+          onClick={() => setStatusFilter("all")}
+        >
+          Tümü
+        </Button>
+        {PROGRAM_STATUSES.map((s) => (
+          <Button
+            key={s}
+            type="button"
+            size="sm"
+            variant={statusFilter === s ? "default" : "outline"}
+            onClick={() => setStatusFilter(s)}
+          >
+            {LABELS.programStatus[s]}
           </Button>
-        ) : null}
+        ))}
       </div>
 
       <Card>
@@ -158,13 +198,16 @@ export function ProgramsPageClient() {
                 <TableHead>Program</TableHead>
                 <TableHead>Tür</TableHead>
                 <TableHead>Durum</TableHead>
+                <TableHead>Katılımcı</TableHead>
                 <TableHead>Tarih</TableHead>
                 <TableHead className="text-right">Fiyat</TableHead>
                 {isAdmin ? <TableHead className="w-[100px]" /> : null}
               </TableRow>
             </TableHeader>
             <TableBody>
-              {programs.map((p) => (
+              {filteredPrograms.map((p) => {
+                const count = enrollmentCounts.get(p.id) ?? 0;
+                return (
                 <TableRow key={p.id}>
                   <TableCell>
                     <Link
@@ -183,6 +226,10 @@ export function ProgramsPageClient() {
                     <Badge variant="outline">
                       {LABELS.programStatus[p.status]}
                     </Badge>
+                  </TableCell>
+                  <TableCell className="text-sm">
+                    <span className="font-medium">{count}</span>
+                    <span className="text-muted-foreground"> kayıt</span>
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
                     {p.startDate
@@ -208,13 +255,23 @@ export function ProgramsPageClient() {
                     </TableCell>
                   ) : null}
                 </TableRow>
-              ))}
+                );
+              })}
             </TableBody>
           </Table>
-          {programs.length === 0 ? (
-            <p className="p-6 text-sm text-muted-foreground">
-              Henüz program yok{isAdmin ? ". Yeni program ekleyin." : "."}
-            </p>
+          {filteredPrograms.length === 0 ? (
+            <div className="p-6">
+              <EmptyState
+                title="Program yok"
+                description={
+                  statusFilter !== "all"
+                    ? "Bu durum filtresinde kayıt bulunamadı."
+                    : isAdmin
+                      ? "Yeni program ekleyerek başlayın."
+                      : "Henüz tanımlı program yok."
+                }
+              />
+            </div>
           ) : null}
         </CardContent>
       </Card>

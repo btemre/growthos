@@ -56,6 +56,25 @@ export async function createDeal(
   return ref.id;
 }
 
+export function subscribeDeal(
+  db: Firestore,
+  dealId: string,
+  onData: (deal: Deal | null) => void,
+  onError?: (e: Error) => void
+): Unsubscribe {
+  return onSnapshot(
+    doc(db, "deals", dealId),
+    (snap) => {
+      if (!snap.exists()) {
+        onData(null);
+        return;
+      }
+      onData(dealFromDoc(snap.id, snap.data()));
+    },
+    (err) => onError?.(err as Error)
+  );
+}
+
 export async function updateDealStage(
   db: Firestore,
   dealId: string,
