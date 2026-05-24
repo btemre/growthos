@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useId } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
@@ -32,6 +32,8 @@ import type { LeadSource, LeadType } from "@/types/models";
 
 export function LeadFormDialog({ ownerId }: { ownerId: string }) {
   const [open, setOpen] = useState(false);
+  const typeId = useId();
+  const sourceId = useId();
   const {
     register,
     handleSubmit,
@@ -92,12 +94,12 @@ export function LeadFormDialog({ ownerId }: { ownerId: string }) {
               ) : null}
             </div>
             <div className="space-y-2">
-              <Label>Tür</Label>
+              <Label htmlFor={typeId}>Tür</Label>
               <Select
                 value={type}
                 onValueChange={(v) => v && setValue("type", v as LeadType)}
               >
-                <SelectTrigger>
+                <SelectTrigger id={typeId}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -110,12 +112,12 @@ export function LeadFormDialog({ ownerId }: { ownerId: string }) {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Kaynak</Label>
+              <Label htmlFor={sourceId}>Kaynak</Label>
               <Select
                 value={source}
                 onValueChange={(v) => v && setValue("source", v as LeadSource)}
               >
-                <SelectTrigger>
+                <SelectTrigger id={sourceId}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -143,7 +145,7 @@ export function LeadFormDialog({ ownerId }: { ownerId: string }) {
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               İptal
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
+            <Button type="submit" loading={isSubmitting}>
               Kaydet
             </Button>
           </DialogFooter>
