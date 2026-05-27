@@ -103,6 +103,7 @@ export function AppShell({
             size="icon"
             className="lg:hidden"
             onClick={() => setMobileOpen(false)}
+            aria-label="Menüyü kapat"
           >
             <X className="size-4" />
           </Button>
