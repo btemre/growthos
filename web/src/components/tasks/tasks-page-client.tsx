@@ -41,8 +41,19 @@ function TaskRow({
   onComplete,
 }: {
   task: Task;
-  onComplete: () => void;
+  onComplete: () => Promise<void>;
 }) {
+  const [isCompleting, setIsCompleting] = useState(false);
+
+  const handleComplete = async () => {
+    setIsCompleting(true);
+    try {
+      await onComplete();
+    } finally {
+      setIsCompleting(false);
+    }
+  };
+
   return (
     <Card className="border-border/80">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -64,7 +75,12 @@ function TaskRow({
             : "—"}
         </span>
         {task.status === "open" ? (
-          <Button size="sm" variant="outline" onClick={onComplete}>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleComplete}
+            loading={isCompleting}
+          >
             Tamamla
           </Button>
         ) : null}
@@ -292,7 +308,7 @@ export function TasksPageClient() {
               </h3>
               <div className="grid gap-3">
                 {sec.items.map((t) => (
-                  <TaskRow key={t.id} task={t} onComplete={() => void complete(t)} />
+                  <TaskRow key={t.id} task={t} onComplete={() => complete(t)} />
                 ))}
               </div>
             </div>
