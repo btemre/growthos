@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { addDays, format, isBefore, startOfDay, startOfWeek, endOfWeek } from "date-fns";
 import { tr } from "date-fns/locale";
@@ -36,7 +36,7 @@ import { completeTask, createTask, subscribeTasksForUser } from "@/lib/firestore
 import { taskFormSchema, type TaskFormValues } from "@/lib/schemas/task";
 import type { Lead, Task } from "@/types/models";
 
-function TaskRow({
+const TaskRow = memo(function TaskRow({
   task,
   onComplete,
 }: {
@@ -71,7 +71,7 @@ function TaskRow({
       </CardContent>
     </Card>
   );
-}
+});
 
 export function TasksPageClient() {
   const searchParams = useSearchParams();
@@ -118,11 +118,13 @@ export function TasksPageClient() {
     [leads]
   );
 
-  const todayStart = startOfDay(new Date());
-  const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
-  const weekEnd = endOfWeek(new Date(), { weekStartsOn: 1 });
+  const todayKey = format(new Date(), "yyyy-MM-dd");
 
   const grouped = useMemo(() => {
+    const todayStart = startOfDay(new Date());
+    const weekStart = startOfWeek(todayStart, { weekStartsOn: 1 });
+    const weekEnd = endOfWeek(todayStart, { weekStartsOn: 1 });
+
     let list = tasks;
     if (filterOverdue) {
       list = list.filter(
@@ -162,7 +164,7 @@ export function TasksPageClient() {
         !weekIds.has(t.id)
     );
     return { overdue, today, thisWeek, later, all: list };
-  }, [tasks, todayStart, weekStart, weekEnd, filterOverdue]);
+  }, [tasks, todayKey, filterOverdue]);
 
   async function onCreate(values: TaskFormValues) {
     if (!uid) return;
@@ -185,7 +187,7 @@ export function TasksPageClient() {
     }
   }
 
-  async function complete(t: Task) {
+  const complete = useCallback(async (t: Task) => {
     try {
       const db = getFirebaseDb();
       await completeTask(db, t.id);
@@ -194,7 +196,7 @@ export function TasksPageClient() {
       console.error(e);
       toast.error("İşlem başarısız");
     }
-  }
+  }, []);
 
   const sections = filterOverdue
     ? [{ title: "Geciken", items: grouped.overdue }]

@@ -62,6 +62,8 @@ export function LeadsPageClient() {
   const uid = firebaseUser?.uid ?? "";
   const isAdmin = profile?.role === "admin";
 
+  const todayKey = format(new Date(), "yyyy-MM-dd");
+
   useEffect(() => {
     if (!uid) return;
     const db = getFirebaseDb();
@@ -80,9 +82,9 @@ export function LeadsPageClient() {
     });
   }, []);
 
-  const todayStart = startOfDay(new Date());
-
   const filtered = useMemo(() => {
+    const todayStart = startOfDay(new Date());
+
     return leads.filter((l) => {
       if (typeFilter !== "all" && l.type !== typeFilter) return false;
       if (sourceFilter !== "all" && l.source !== sourceFilter) return false;
@@ -95,7 +97,7 @@ export function LeadsPageClient() {
       if (tagFilter !== "all" && !l.tagIds?.includes(tagFilter)) return false;
       return true;
     });
-  }, [leads, typeFilter, sourceFilter, preset, tagFilter, todayStart, uid]);
+  }, [leads, typeFilter, sourceFilter, preset, tagFilter, todayKey, uid]);
 
   const columns = useMemo<ColumnDef<Lead>[]>(
     () => [
