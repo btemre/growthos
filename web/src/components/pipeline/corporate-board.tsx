@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, memo } from "react";
 import {
   DndContext,
   type DragEndEvent,
@@ -64,7 +64,7 @@ function StageColumn({
   );
 }
 
-function DealCard({
+const DealCard = memo(function DealCard({
   deal,
   ownerLabel,
   showProposalLink,
@@ -122,7 +122,7 @@ function DealCard({
       </Card>
     </div>
   );
-}
+});
 
 export function CorporateBoard() {
   const { firebaseUser, profile } = useAuth();
@@ -142,13 +142,21 @@ export function CorporateBoard() {
 
   const byStage = useMemo(() => {
     const map = new Map<DealStage, Deal[]>();
-    CORPORATE_DEAL_STAGES.forEach((s) => map.set(s, []));
+    const totalValues = new Map<DealStage, number>();
+    CORPORATE_DEAL_STAGES.forEach((s) => {
+      map.set(s, []);
+      totalValues.set(s, 0);
+    });
     deals.forEach((d) => {
       const list = map.get(d.stage) ?? [];
       list.push(d);
       map.set(d.stage, list);
+      totalValues.set(
+        d.stage,
+        (totalValues.get(d.stage) ?? 0) + (d.estimatedValue ?? 0)
+      );
     });
-    return map;
+    return { map, totalValues };
   }, [deals]);
 
   const sensors = useSensors(
@@ -217,11 +225,8 @@ export function CorporateBoard() {
         <div className="w-full overflow-x-auto pb-2">
           <div className="flex min-w-min gap-3 pb-2">
             {CORPORATE_DEAL_STAGES.map((stage) => {
-              const list = byStage.get(stage) ?? [];
-              const totalValue = list.reduce(
-                (acc, d) => acc + (d.estimatedValue ?? 0),
-                0
-              );
+              const list = byStage.map.get(stage) ?? [];
+              const totalValue = byStage.totalValues.get(stage) ?? 0;
               return (
               <StageColumn
                 key={stage}
