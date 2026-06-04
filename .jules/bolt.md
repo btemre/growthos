@@ -1,0 +1,3 @@
+## 2026-06-04 - Reports Page Optimization
+**Learning:** The `ReportsPageClient` had an O(S*N) bottleneck where it filtered the entire `leads` array multiple times (once for each source) to calculate conversion rates. Additionally, `ownerStats` performed nested O(M*N) searches for user names.
+**Action:** Use a single-pass O(N) loop to collect all relevant statistics into a Map or Record. Pre-map entities (like users) into a Map for O(1) lookups during the stats aggregation pass. Ensure that while optimizing, existing business logic (like source whitelisting via `LEAD_SOURCES`) is preserved to avoid UI regressions.

@@ -275,43 +275,86 @@ export function ReportsPageClient() {
 
   const ownerStats = useMemo(() => {
     if (!isAdmin) return [];
-    const map = new Map<
-      string,
-      { leadsNew: number; dealsWon: number }
-    >();
-    leadsInRange.forEach((l) => {
+
+    // Optimization: Pre-map users for O(1) name lookup
+    const userMap = new Map(users.map((u) => [u.id, u.name]));
+
+    const map = new Map<string, { leadsNew: number; dealsWon: number }>();
+
+    // Single pass over leadsInRange for stats
+    for (const l of leadsInRange) {
       const o = l.ownerId;
-      if (!map.has(o)) map.set(o, { leadsNew: 0, dealsWon: 0 });
-      const m = map.get(o)!;
-      m.leadsNew += 1;
-    });
-    dealsWonInRange.forEach((d) => {
+      let stats = map.get(o);
+      if (!stats) {
+        stats = { leadsNew: 0, dealsWon: 0 };
+        map.set(o, stats);
+      }
+      stats.leadsNew++;
+    }
+
+    // Single pass over dealsWonInRange for stats
+    for (const d of dealsWonInRange) {
       const o = d.ownerId;
-      if (!map.has(o)) map.set(o, { leadsNew: 0, dealsWon: 0 });
-      map.get(o)!.dealsWon += 1;
-    });
-    const name = (id: string) => users.find((u) => u.id === id)?.name ?? id;
-    return [...map.entries()]
-      .map(([id, v]) => ({ id, name: name(id), ...v }))
+      let stats = map.get(o);
+      if (!stats) {
+        stats = { leadsNew: 0, dealsWon: 0 };
+        map.set(o, stats);
+      }
+      stats.dealsWon++;
+    }
+
+    return Array.from(map.entries())
+      .map(([id, v]) => ({
+        id,
+        name: userMap.get(id) ?? id,
+        ...v,
+      }))
       .sort((a, b) => b.leadsNew + b.dealsWon - (a.leadsNew + a.dealsWon));
   }, [isAdmin, leadsInRange, dealsWonInRange, users]);
 
-  const conversionBySource = useMemo(() => {
-    const rows: { source: string; total: number; enrolled: number; pct: number }[] =
-      [];
-    LEAD_SOURCES.forEach((s) => {
-      const subset = leads.filter((l) => l.source === s);
-      const total = subset.length;
-      const en = subset.filter((l) => l.educationStage === "enrolled").length;
-      rows.push({
+  const allTimeStats = useMemo(() => {
+    let enrolledCount = 0;
+    const sourceStatsMap: Record<string, { total: number; enrolled: number }> = {};
+
+    // Single pass over all leads for global and source-based stats
+    for (const l of leads) {
+      const isEnrolled = l.educationStage === "enrolled";
+      if (isEnrolled) enrolledCount++;
+
+      if (!sourceStatsMap[l.source]) {
+        sourceStatsMap[l.source] = { total: 0, enrolled: 0 };
+      }
+      sourceStatsMap[l.source].total++;
+      if (isEnrolled) sourceStatsMap[l.source].enrolled++;
+    }
+
+    const conversionBySource = LEAD_SOURCES.map((s) => {
+      const stats = sourceStatsMap[s] || { total: 0, enrolled: 0 };
+      return {
         source: LABELS.source[s],
-        total,
-        enrolled: en,
-        pct: total ? Math.round((en / total) * 100) : 0,
-      });
-    });
-    return rows.filter((r) => r.total > 0).sort((a, b) => b.pct - a.pct);
+        total: stats.total,
+        enrolled: stats.enrolled,
+        pct: stats.total ? Math.round((stats.enrolled / stats.total) * 100) : 0,
+      };
+    })
+      .filter((r) => r.total > 0)
+      .sort((a, b) => b.pct - a.pct);
+
+    const totalLeadsAll = leads.length;
+    const conversionAll = totalLeadsAll
+      ? Math.round((enrolledCount / totalLeadsAll) * 100)
+      : 0;
+
+    return {
+      totalLeadsAll,
+      enrolledAll: enrolledCount,
+      conversionAll,
+      conversionBySource,
+    };
   }, [leads]);
+
+  const { totalLeadsAll, enrolledAll, conversionAll, conversionBySource } =
+    allTimeStats;
 
   const csvRowCount = useMemo(() => {
     return 12 + leadsInRange.length;
@@ -346,11 +389,6 @@ export function ReportsPageClient() {
     );
   }
 
-  const totalLeadsAll = leads.length;
-  const enrolledAll = leads.filter((l) => l.educationStage === "enrolled").length;
-  const conversionAll = totalLeadsAll
-    ? Math.round((enrolledAll / totalLeadsAll) * 100)
-    : 0;
 
   return (
     <div className="space-y-6">
