@@ -109,8 +109,8 @@ function DealFormFields({
           {...register("estimatedValue")}
         />
       </div>
-      <Button type="submit" disabled={busy} className="w-full">
-        {busy ? "Kaydediliyor…" : "Oluştur"}
+      <Button type="submit" loading={busy} className="w-full">
+        Oluştur
       </Button>
     </form>
   );
