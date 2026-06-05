@@ -80,9 +80,13 @@ export function LeadsPageClient() {
     });
   }, []);
 
-  const todayStart = startOfDay(new Date());
+  // Use a stable key for date-based calculations to avoid memoization failure on every render
+  const todayKey = format(new Date(), "yyyy-MM-dd");
 
   const filtered = useMemo(() => {
+    const [y, m, d] = todayKey.split("-").map(Number);
+    const todayStart = startOfDay(new Date(y, m - 1, d));
+
     return leads.filter((l) => {
       if (typeFilter !== "all" && l.type !== typeFilter) return false;
       if (sourceFilter !== "all" && l.source !== sourceFilter) return false;
@@ -95,7 +99,7 @@ export function LeadsPageClient() {
       if (tagFilter !== "all" && !l.tagIds?.includes(tagFilter)) return false;
       return true;
     });
-  }, [leads, typeFilter, sourceFilter, preset, tagFilter, todayStart, uid]);
+  }, [leads, typeFilter, sourceFilter, preset, tagFilter, todayKey, uid]);
 
   const columns = useMemo<ColumnDef<Lead>[]>(
     () => [

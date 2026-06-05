@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { addDays, format, isBefore, startOfDay, startOfWeek, endOfWeek } from "date-fns";
 import { tr } from "date-fns/locale";
@@ -36,7 +36,7 @@ import { completeTask, createTask, subscribeTasksForUser } from "@/lib/firestore
 import { taskFormSchema, type TaskFormValues } from "@/lib/schemas/task";
 import type { Lead, Task } from "@/types/models";
 
-function TaskRow({
+const TaskRow = memo(function TaskRow({
   task,
   onComplete,
 }: {
@@ -71,7 +71,7 @@ function TaskRow({
       </CardContent>
     </Card>
   );
-}
+});
 
 export function TasksPageClient() {
   const searchParams = useSearchParams();
@@ -118,51 +118,53 @@ export function TasksPageClient() {
     [leads]
   );
 
-  const todayStart = startOfDay(new Date());
-  const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
-  const weekEnd = endOfWeek(new Date(), { weekStartsOn: 1 });
+  // Use a stable key for date-based calculations to avoid memoization failure on every render
+  const todayKey = format(new Date(), "yyyy-MM-dd");
 
   const grouped = useMemo(() => {
-    let list = tasks;
-    if (filterOverdue) {
-      list = list.filter(
-        (t) =>
-          t.status === "open" && t.dueDate && isBefore(t.dueDate, todayStart)
-      );
-    }
-    const overdue = list.filter(
-      (t) =>
-        t.status === "open" && t.dueDate && isBefore(t.dueDate, todayStart)
-    );
+    const [y, m, d] = todayKey.split("-").map(Number);
+    const todayStart = startOfDay(new Date(y, m - 1, d));
     const todayEnd = addDays(todayStart, 1);
-    const today = list.filter(
-      (t) =>
-        t.status === "open" &&
-        t.dueDate &&
-        !isBefore(t.dueDate, todayStart) &&
-        isBefore(t.dueDate, todayEnd)
-    );
-    const todayIds = new Set(today.map((t) => t.id));
-    const overdueIds = new Set(overdue.map((t) => t.id));
-    const thisWeek = list.filter(
-      (t) =>
-        t.status === "open" &&
-        t.dueDate &&
-        !isBefore(t.dueDate, weekStart) &&
-        !isBefore(weekEnd, t.dueDate) &&
-        !todayIds.has(t.id) &&
-        !overdueIds.has(t.id)
-    );
-    const weekIds = new Set(thisWeek.map((t) => t.id));
-    const later = list.filter(
-      (t) =>
-        t.status === "open" &&
-        !overdueIds.has(t.id) &&
-        !todayIds.has(t.id) &&
-        !weekIds.has(t.id)
-    );
-    return { overdue, today, thisWeek, later, all: list };
-  }, [tasks, todayStart, weekStart, weekEnd, filterOverdue]);
+    const weekStart = startOfWeek(todayStart, { weekStartsOn: 1 });
+    const weekEnd = endOfWeek(todayStart, { weekStartsOn: 1 });
+
+    const overdue: Task[] = [];
+    const today: Task[] = [];
+    const thisWeek: Task[] = [];
+    const later: Task[] = [];
+    const all: Task[] = [];
+
+    // Single-pass optimization to categorize tasks
+    for (const t of tasks) {
+      if (filterOverdue) {
+        if (t.status === "open" && t.dueDate && isBefore(t.dueDate, todayStart)) {
+          overdue.push(t);
+          all.push(t);
+        }
+        continue;
+      }
+
+      all.push(t);
+      if (t.status !== "open") continue;
+
+      if (!t.dueDate) {
+        later.push(t);
+        continue;
+      }
+
+      if (isBefore(t.dueDate, todayStart)) {
+        overdue.push(t);
+      } else if (isBefore(t.dueDate, todayEnd)) {
+        today.push(t);
+      } else if (!isBefore(t.dueDate, weekStart) && !isBefore(weekEnd, t.dueDate)) {
+        thisWeek.push(t);
+      } else {
+        later.push(t);
+      }
+    }
+
+    return { overdue, today, thisWeek, later, all };
+  }, [tasks, todayKey, filterOverdue]);
 
   async function onCreate(values: TaskFormValues) {
     if (!uid) return;
