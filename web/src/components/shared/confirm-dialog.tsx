@@ -52,7 +52,7 @@ export function ConfirmDialog({
           <Button
             type="button"
             variant={variant === "destructive" ? "destructive" : "default"}
-            disabled={busy}
+            loading={busy}
             onClick={() => void onConfirm()}
           >
             {confirmLabel}
