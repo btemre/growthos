@@ -1,0 +1,3 @@
+## 2025-05-15 - Standardizing Button Loading States
+**Learning:** When implementing a `loading` state in a shared `Button` component, it's critical to destructure the `disabled` prop to ensure the component-level `disabled={disabled || loading}` logic is not overridden by `{...props}` spreading. Additionally, for standard buttons (with text), a margin (`mr-2`) is needed on the spinner to prevent it from touching the label.
+**Action:** Always destructure `disabled` in core interactive components when adding secondary state-based disabling logic, and ensure spinners have appropriate spacing when rendered inline with text.
