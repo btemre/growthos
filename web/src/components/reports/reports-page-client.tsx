@@ -141,6 +141,7 @@ export function ReportsPageClient() {
   }, [uid, isAdmin]);
 
   const dealIds = useMemo(() => deals.map((d) => d.id), [deals]);
+  const dealIdsKey = dealIds.join(",");
 
   useEffect(() => {
     if (!uid || !showCorporate) return;
@@ -150,7 +151,7 @@ export function ReportsPageClient() {
       { isAdmin, dealIds },
       setProposals
     );
-  }, [uid, isAdmin, showCorporate, dealIds.join(",")]);
+  }, [uid, isAdmin, showCorporate, dealIds, dealIdsKey]);
 
   useEffect(() => {
     if (!uid || !showEnrollmentsBlock) return;
@@ -169,35 +170,40 @@ export function ReportsPageClient() {
     );
   }, [uid, range.start, range.end]);
 
-  const leadsInRange = useMemo(
-    () => leads.filter((l) => inRange(l.createdAt, range.start, range.end)),
-    [leads, range.start, range.end]
-  );
-
-  const bySource = useMemo(() => {
+  const leadStatsInRange = useMemo(() => {
+    const inRangeList: Lead[] = [];
+    const enrolledList: Lead[] = [];
     const counts: Record<string, number> = {};
+
     LEAD_SOURCES.forEach((s) => {
       counts[s] = 0;
     });
-    leadsInRange.forEach((l) => {
-      counts[l.source] = (counts[l.source] ?? 0) + 1;
-    });
-    return LEAD_SOURCES.map((s) => ({
-      key: s,
-      name: LABELS.source[s],
-      count: counts[s] ?? 0,
-    }));
-  }, [leadsInRange]);
 
-  const enrolledInRange = useMemo(
-    () =>
-      leads.filter(
-        (l) =>
-          l.educationStage === "enrolled" &&
-          inRange(l.updatedAt, range.start, range.end)
-      ),
-    [leads, range.start, range.end]
-  );
+    leads.forEach((l) => {
+      if (inRange(l.createdAt, range.start, range.end)) {
+        inRangeList.push(l);
+        counts[l.source] = (counts[l.source] ?? 0) + 1;
+      }
+      if (
+        l.educationStage === "enrolled" &&
+        inRange(l.updatedAt, range.start, range.end)
+      ) {
+        enrolledList.push(l);
+      }
+    });
+
+    return {
+      leadsInRange: inRangeList,
+      enrolledInRange: enrolledList,
+      bySource: LEAD_SOURCES.map((s) => ({
+        key: s,
+        name: LABELS.source[s],
+        count: counts[s] ?? 0,
+      })),
+    };
+  }, [leads, range.start, range.end]);
+
+  const { leadsInRange, enrolledInRange, bySource } = leadStatsInRange;
 
   const enrollmentsInRange = useMemo(
     () =>
@@ -273,6 +279,12 @@ export function ReportsPageClient() {
     );
   }, [tasks]);
 
+  const userMap = useMemo(() => {
+    const m = new Map<string, string>();
+    users.forEach((u) => m.set(u.id, u.name));
+    return m;
+  }, [users]);
+
   const ownerStats = useMemo(() => {
     if (!isAdmin) return [];
     const map = new Map<
@@ -290,28 +302,60 @@ export function ReportsPageClient() {
       if (!map.has(o)) map.set(o, { leadsNew: 0, dealsWon: 0 });
       map.get(o)!.dealsWon += 1;
     });
-    const name = (id: string) => users.find((u) => u.id === id)?.name ?? id;
-    return [...map.entries()]
-      .map(([id, v]) => ({ id, name: name(id), ...v }))
-      .sort((a, b) => b.leadsNew + b.dealsWon - (a.leadsNew + a.dealsWon));
-  }, [isAdmin, leadsInRange, dealsWonInRange, users]);
 
-  const conversionBySource = useMemo(() => {
-    const rows: { source: string; total: number; enrolled: number; pct: number }[] =
-      [];
+    return [...map.entries()]
+      .map(([id, v]) => ({ id, name: userMap.get(id) ?? id, ...v }))
+      .sort((a, b) => b.leadsNew + b.dealsWon - (a.leadsNew + a.dealsWon));
+  }, [isAdmin, leadsInRange, dealsWonInRange, userMap]);
+
+  const leadStatsAll = useMemo(() => {
+    const totalLeadsAll = leads.length;
+    let enrolledCount = 0;
+    const sourceMap: Record<string, { total: number; enrolled: number }> = {};
+
     LEAD_SOURCES.forEach((s) => {
-      const subset = leads.filter((l) => l.source === s);
-      const total = subset.length;
-      const en = subset.filter((l) => l.educationStage === "enrolled").length;
-      rows.push({
-        source: LABELS.source[s],
-        total,
-        enrolled: en,
-        pct: total ? Math.round((en / total) * 100) : 0,
-      });
+      sourceMap[s] = { total: 0, enrolled: 0 };
     });
-    return rows.filter((r) => r.total > 0).sort((a, b) => b.pct - a.pct);
+
+    leads.forEach((l) => {
+      const isEnrolled = l.educationStage === "enrolled";
+      if (isEnrolled) {
+        enrolledCount++;
+      }
+      if (sourceMap[l.source]) {
+        sourceMap[l.source].total++;
+        if (isEnrolled) {
+          sourceMap[l.source].enrolled++;
+        }
+      }
+    });
+
+    const conversionBySource = LEAD_SOURCES.map((s) => {
+      const stats = sourceMap[s];
+      return {
+        source: LABELS.source[s],
+        total: stats.total,
+        enrolled: stats.enrolled,
+        pct: stats.total ? Math.round((stats.enrolled / stats.total) * 100) : 0,
+      };
+    })
+      .filter((r) => r.total > 0)
+      .sort((a, b) => b.pct - a.pct);
+
+    const conversionAll = totalLeadsAll
+      ? Math.round((enrolledCount / totalLeadsAll) * 100)
+      : 0;
+
+    return {
+      totalLeadsAll,
+      enrolledAll: enrolledCount,
+      conversionAll,
+      conversionBySource,
+    };
   }, [leads]);
+
+  const { totalLeadsAll, enrolledAll, conversionAll, conversionBySource } =
+    leadStatsAll;
 
   const csvRowCount = useMemo(() => {
     return 12 + leadsInRange.length;
@@ -345,12 +389,6 @@ export function ReportsPageClient() {
       rows
     );
   }
-
-  const totalLeadsAll = leads.length;
-  const enrolledAll = leads.filter((l) => l.educationStage === "enrolled").length;
-  const conversionAll = totalLeadsAll
-    ? Math.round((enrolledAll / totalLeadsAll) * 100)
-    : 0;
 
   return (
     <div className="space-y-6">
