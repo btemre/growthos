@@ -103,6 +103,7 @@ export function AppShell({
             size="icon"
             className="lg:hidden"
             onClick={() => setMobileOpen(false)}
+            aria-label="Menüyü kapat"
           >
             <X className="size-4" />
           </Button>
@@ -200,6 +201,7 @@ export function AppShell({
                 buttonVariants({ variant: "ghost" }),
                 "gap-2 px-2 data-[popup-open]:bg-muted"
               )}
+              aria-label="Kullanıcı menüsü"
             >
               <Avatar className="size-8">
                 <AvatarFallback className="bg-primary/15 text-xs font-medium">
