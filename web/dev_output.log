@@ -1,0 +1,19 @@
+
+> web@0.1.0 dev /app/web
+> next dev
+
+▲ Next.js 16.2.1 (Turbopack)
+- Local:         http://localhost:3007
+- Network:       http://192.168.0.2:3007
+✓ Ready in 581ms
+
+○ Compiling /verify-bolt ...
+ GET /verify-bolt 200 in 5.5s (next.js: 4.9s, application-code: 629ms)
+[browser] Missing env: NEXT_PUBLIC_FIREBASE_API_KEY (src/lib/firebase/config.ts:7:13)
+[browser] Missing env: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN (src/lib/firebase/config.ts:7:13)
+[browser] Missing env: NEXT_PUBLIC_FIREBASE_PROJECT_ID (src/lib/firebase/config.ts:7:13)
+[browser] Missing env: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET (src/lib/firebase/config.ts:7:13)
+[browser] Missing env: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID (src/lib/firebase/config.ts:7:13)
+[browser] Missing env: NEXT_PUBLIC_FIREBASE_APP_ID (src/lib/firebase/config.ts:7:13)
+ GET /api/firebase-config 200 in 544ms (next.js: 522ms, application-code: 22ms)
+ GET /api/firebase-config 200 in 8ms (next.js: 3ms, application-code: 5ms)
