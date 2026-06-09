@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import {
   addDays,
   eachDayOfInterval,
@@ -32,6 +32,37 @@ type CalEvent = {
   kind: "task" | "lead";
 };
 
+const CalendarDay = memo(function CalendarDay({
+  day,
+  eventsCount,
+  inMonth,
+  selected,
+  onClick,
+}: {
+  day: Date;
+  eventsCount: number;
+  inMonth: boolean;
+  selected: boolean;
+  onClick: (d: Date) => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onClick(day)}
+      className={`min-h-16 rounded-md border p-1 text-left text-xs transition-colors ${
+        inMonth ? "bg-card" : "bg-muted/30 text-muted-foreground"
+      } ${selected ? "ring-2 ring-primary" : ""}`}
+    >
+      <span className="font-medium">{format(day, "d")}</span>
+      {eventsCount > 0 ? (
+        <span className="mt-0.5 block truncate text-[10px] text-primary">
+          {eventsCount} olay
+        </span>
+      ) : null}
+    </button>
+  );
+});
+
 export function CalendarPageClient() {
   const { firebaseUser, profile } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -52,11 +83,17 @@ export function CalendarPageClient() {
     };
   }, [uid, isAdmin]);
 
-  const events = useMemo(() => {
-    const list: CalEvent[] = [];
+  const eventsByDate = useMemo(() => {
+    const map = new Map<string, CalEvent[]>();
+    const add = (date: Date, event: CalEvent) => {
+      const key = format(date, "yyyy-MM-dd");
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(event);
+    };
+
     for (const t of tasks) {
       if (!t.dueDate || t.status !== "open") continue;
-      list.push({
+      add(t.dueDate, {
         id: `task-${t.id}`,
         date: t.dueDate,
         title: t.title,
@@ -66,7 +103,7 @@ export function CalendarPageClient() {
     }
     for (const l of leads) {
       if (!l.nextActionAt) continue;
-      list.push({
+      add(l.nextActionAt, {
         id: `lead-${l.id}`,
         date: l.nextActionAt,
         title: `${l.name} — aksiyon`,
@@ -74,18 +111,21 @@ export function CalendarPageClient() {
         kind: "lead",
       });
     }
-    return list;
+    return map;
   }, [tasks, leads]);
 
-  const monthStart = startOfMonth(viewMonth);
-  const monthEnd = endOfMonth(viewMonth);
-  const gridStart = startOfWeek(monthStart, { weekStartsOn: 1 });
-  const gridEnd = startOfWeek(addDays(monthEnd, 6), { weekStartsOn: 1 });
-  const days = eachDayOfInterval({ start: gridStart, end: addDays(gridEnd, 6) });
+  const days = useMemo(() => {
+    const monthStart = startOfMonth(viewMonth);
+    const monthEnd = endOfMonth(viewMonth);
+    const gridStart = startOfWeek(monthStart, { weekStartsOn: 1 });
+    const gridEnd = startOfWeek(addDays(monthEnd, 6), { weekStartsOn: 1 });
+    return eachDayOfInterval({ start: gridStart, end: addDays(gridEnd, 6) });
+  }, [viewMonth]);
 
-  const selectedDayEvents = events.filter((e) =>
-    isSameDay(e.date, selectedDay)
-  );
+  const selectedDayEvents = useMemo(() => {
+    const key = format(selectedDay, "yyyy-MM-dd");
+    return eventsByDate.get(key) ?? [];
+  }, [eventsByDate, selectedDay]);
 
   return (
     <div className="space-y-6">
@@ -129,25 +169,19 @@ export function CalendarPageClient() {
           </div>
           <div className="grid grid-cols-7 gap-1">
             {days.map((day) => {
-              const dayEvents = events.filter((e) => isSameDay(e.date, day));
+              const dateKey = format(day, "yyyy-MM-dd");
+              const dayEvents = eventsByDate.get(dateKey) ?? [];
               const inMonth = isSameMonth(day, viewMonth);
               const selected = isSameDay(day, selectedDay);
               return (
-                <button
+                <CalendarDay
                   key={day.toISOString()}
-                  type="button"
-                  onClick={() => setSelectedDay(day)}
-                  className={`min-h-16 rounded-md border p-1 text-left text-xs transition-colors ${
-                    inMonth ? "bg-card" : "bg-muted/30 text-muted-foreground"
-                  } ${selected ? "ring-2 ring-primary" : ""}`}
-                >
-                  <span className="font-medium">{format(day, "d")}</span>
-                  {dayEvents.length > 0 ? (
-                    <span className="mt-0.5 block truncate text-[10px] text-primary">
-                      {dayEvents.length} olay
-                    </span>
-                  ) : null}
-                </button>
+                  day={day}
+                  eventsCount={dayEvents.length}
+                  inMonth={inMonth}
+                  selected={selected}
+                  onClick={setSelectedDay}
+                />
               );
             })}
           </div>
