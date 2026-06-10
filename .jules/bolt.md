@@ -1,0 +1,3 @@
+## 2026-06-10 - Consolidating React Stats and Date Stability
+**Learning:** React `useMemo` hooks for complex calculations often fail when they depend on date objects created during the render path (e.g., `new Date()`). These objects are never shallowly equal, triggering re-calculations every render. Consolidating multiple array traversals into single-pass loops within these memoized blocks significantly improves performance as data grows.
+**Action:** Always use a stable `todayKey` string as a dependency for date-based `useMemo` blocks and derive specific dates inside the hook. Use single-pass loops (`forEach`, `reduce`) instead of chained `.filter()` calls for multiple metrics.
