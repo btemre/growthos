@@ -1,0 +1,3 @@
+## 2025-05-22 - [Optimizing Dashboard Stats Calculation]
+**Learning:** Using `new Date()` directly in a `useMemo` dependency array causes the memoization to fail on every render because Date instances are never shallowly equal. This results in expensive calculations (filtering, reducing) running on every component update. Consolidating multiple array traversals into a single pass significantly reduces overhead for large datasets.
+**Action:** Use a stable string key (e.g., `format(new Date(), 'yyyy-MM-dd')`) for date-based memoization and perform single-pass O(N) traversals instead of multiple $O(k \cdot N)$ filters.
