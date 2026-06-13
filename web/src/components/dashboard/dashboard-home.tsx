@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   endOfDay,
   format,
   isAfter,
   isBefore,
+  parse,
   startOfDay,
   startOfMonth,
   subDays,
@@ -32,7 +33,7 @@ import { subscribeTasksForUser } from "@/lib/firestore/tasks";
 import { subscribeDealsForUser } from "@/lib/firestore/deals";
 import type { Activity, Deal, Lead, Task } from "@/types/models";
 
-function KpiCard({
+const KpiCard = React.memo(function KpiCard({
   title,
   value,
   hint,
@@ -67,7 +68,7 @@ function KpiCard({
     );
   }
   return inner;
-}
+});
 
 export function DashboardHome() {
   const { firebaseUser, profile } = useAuth();
@@ -98,73 +99,84 @@ export function DashboardHome() {
     };
   }, [uid, isAdmin]);
 
-  const todayStart = startOfDay(new Date());
-  const todayEnd = endOfDay(new Date());
-  const weekAgo = startOfDay(subDays(new Date(), 7));
-  const monthStart = startOfMonth(new Date());
+  // Use a string key to stabilize the date reference across renders.
+  const todayKey = format(new Date(), "yyyy-MM-dd");
 
   const stats = useMemo(() => {
-    const leadsToday = leads.filter((l) => {
+    // Re-derive boundaries inside useMemo to ensure stable dependencies.
+    const refDate = parse(todayKey, "yyyy-MM-dd", new Date());
+    const todayStart = startOfDay(refDate);
+    const todayEnd = endOfDay(refDate);
+    const weekAgo = startOfDay(subDays(refDate, 7));
+    const monthStart = startOfMonth(refDate);
+    const threeDaysAgo = subDays(refDate, 3);
+
+    // Single-pass leads processing
+    let leadsToday = 0;
+    let enrolledThisMonth = 0;
+    let closedSalesWeek = 0;
+    const hotSilent: Lead[] = [];
+    const awaitingPayment: Lead[] = [];
+
+    for (const l of leads) {
       const c = l.createdAt;
-      if (!c) return false;
-      return !isBefore(c, todayStart) && !isAfter(c, todayEnd);
-    }).length;
-
-    const callsToday = activities.filter((a) => {
-      if (a.activityType !== "phone_call") return false;
-      const d = a.activityDate;
-      if (!d) return false;
-      return !isBefore(d, todayStart) && !isAfter(d, todayEnd);
-    }).length;
-
-    const followUpsToday = tasks.filter(
-      (t) =>
-        t.status === "open" &&
-        t.dueDate &&
-        !isBefore(t.dueDate, todayStart) &&
-        !isAfter(t.dueDate, todayEnd)
-    ).length;
-
-    const enrolledThisMonth = leads.filter((l) => {
-      if (l.educationStage !== "enrolled") return false;
       const u = l.updatedAt;
-      if (!u) return false;
-      return !isBefore(u, monthStart);
-    }).length;
+      const isEnrolled = l.educationStage === "enrolled";
 
-    const closedSalesWeek = leads.filter((l) => {
-      if (l.educationStage !== "enrolled") return false;
-      const u = l.updatedAt;
-      if (!u) return false;
-      return !isBefore(u, weekAgo);
-    }).length;
+      if (c && !isBefore(c, todayStart) && !isAfter(c, todayEnd)) {
+        leadsToday++;
+      }
+      if (isEnrolled && u && !isBefore(u, monthStart)) {
+        enrolledThisMonth++;
+      }
+      if (isEnrolled && u && !isBefore(u, weekAgo)) {
+        closedSalesWeek++;
+      }
+      if (l.type === "education_candidate" && l.score >= 50) {
+        const last = l.lastContactAt;
+        if (!last || isBefore(last, threeDaysAgo)) {
+          hotSilent.push(l);
+        }
+      }
+      if (l.educationStage === "awaiting_payment") {
+        awaitingPayment.push(l);
+      }
+    }
 
-    const corpOpenedMonth = deals.filter((d) => {
+    // Single-pass activities processing
+    let callsToday = 0;
+    for (const a of activities) {
+      if (a.activityType === "phone_call") {
+        const d = a.activityDate;
+        if (d && !isBefore(d, todayStart) && !isAfter(d, todayEnd)) {
+          callsToday++;
+        }
+      }
+    }
+
+    // Single-pass tasks processing
+    let followUpsToday = 0;
+    const overdueTasks: Task[] = [];
+    for (const t of tasks) {
+      if (t.status === "open" && t.dueDate) {
+        if (!isBefore(t.dueDate, todayStart) && !isAfter(t.dueDate, todayEnd)) {
+          followUpsToday++;
+        } else if (isBefore(t.dueDate, todayStart)) {
+          overdueTasks.push(t);
+        }
+      }
+    }
+
+    // Single-pass deals processing
+    let corpOpenedMonth = 0;
+    let pipelineValue = 0;
+    for (const d of deals) {
+      pipelineValue += d.estimatedValue ?? 0;
       const c = d.createdAt;
-      if (!c) return false;
-      return !isBefore(c, monthStart);
-    }).length;
-
-    const pipelineValue = deals.reduce((acc, d) => acc + (d.estimatedValue ?? 0), 0);
-
-    const hotSilent = leads.filter((l) => {
-      if (l.type !== "education_candidate") return false;
-      if (l.score < 50) return false;
-      const last = l.lastContactAt;
-      if (!last) return true;
-      return isBefore(last, subDays(new Date(), 3));
-    });
-
-    const awaitingPayment = leads.filter(
-      (l) => l.educationStage === "awaiting_payment"
-    );
-
-    const overdueTasks = tasks.filter(
-      (t) =>
-        t.status === "open" &&
-        t.dueDate &&
-        isBefore(t.dueDate, todayStart)
-    );
+      if (c && !isBefore(c, monthStart)) {
+        corpOpenedMonth++;
+      }
+    }
 
     return {
       leadsToday,
@@ -178,7 +190,7 @@ export function DashboardHome() {
       awaitingPayment,
       overdueTasks,
     };
-  }, [leads, tasks, deals, activities, todayStart, todayEnd, weekAgo, monthStart]);
+  }, [leads, tasks, deals, activities, todayKey]);
 
   return (
     <div className="space-y-8">
