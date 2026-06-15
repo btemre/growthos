@@ -37,6 +37,44 @@ export function subscribeTasksForUser(
   );
 }
 
+/**
+ * Subscribes to tasks related to a specific entity (lead, deal, etc).
+ * This is more efficient than filtering all user tasks on the client.
+ * It respects the same permission logic as subscribeTasksForUser.
+ */
+export function subscribeTasksForRelated(
+  db: Firestore,
+  uid: string,
+  isAdmin: boolean,
+  relatedType: Task["relatedType"],
+  relatedId: string,
+  onData: (tasks: Task[]) => void,
+  onError?: (e: Error) => void
+): Unsubscribe {
+  const col = collection(db, "tasks");
+
+  const q = isAdmin
+    ? query(
+        col,
+        where("relatedType", "==", relatedType),
+        where("relatedId", "==", relatedId),
+        orderBy("createdAt", "desc")
+      )
+    : query(
+        col,
+        where("relatedType", "==", relatedType),
+        where("relatedId", "==", relatedId),
+        where("assignedTo", "==", uid),
+        orderBy("createdAt", "desc")
+      );
+
+  return onSnapshot(
+    q,
+    (snap) => onData(snap.docs.map((d) => taskFromDoc(d.id, d.data()))),
+    (err) => onError?.(err as Error)
+  );
+}
+
 export async function createTask(
   db: Firestore,
   input: {
