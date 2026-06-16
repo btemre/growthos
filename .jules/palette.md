@@ -1,0 +1,3 @@
+## 2025-05-15 - Centrally Managed Loading States in Button
+**Learning:** Centrally managing `loading` states in the `Button` component ensures consistent keyboard accessibility (via `disabled` and `aria-busy`) and visual feedback (via `Loader2Icon`) across the entire application without duplicating logic in every form or dialog. This pattern also allows for automatic handling of icon-only button states during asynchronous operations.
+**Action:** Always prefer adding or using a `loading` prop on core `Button` components instead of manually conditionally rendering spinners and managing `disabled` states in individual components.
