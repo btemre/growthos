@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import {
   DndContext,
   type DragEndEvent,
@@ -62,7 +62,7 @@ function StageColumn({
   );
 }
 
-function LeadCard({ lead, ownerLabel }: { lead: Lead; ownerLabel: string }) {
+const LeadCard = memo(function LeadCard({ lead, ownerLabel }: { lead: Lead; ownerLabel: string }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({ id: lead.id });
 
@@ -113,7 +113,7 @@ function LeadCard({ lead, ownerLabel }: { lead: Lead; ownerLabel: string }) {
       </Card>
     </div>
   );
-}
+});
 
 export function EducationBoard() {
   const { firebaseUser, profile } = useAuth();
@@ -135,13 +135,13 @@ export function EducationBoard() {
   const byStage = useMemo(() => {
     const map = new Map<EducationStage, Lead[]>();
     EDUCATION_STAGES.forEach((s) => map.set(s, []));
-    leads
-      .filter((l) => l.type === "education_candidate")
-      .forEach((l) => {
+    leads.forEach((l) => {
+      if (l.type === "education_candidate") {
         const list = map.get(l.educationStage) ?? [];
         list.push(l);
         map.set(l.educationStage, list);
-      });
+      }
+    });
     return map;
   }, [leads]);
 
