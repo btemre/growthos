@@ -1,0 +1,3 @@
+## 2025-05-15 - Optimizing Kanban Board Rendering and Data Aggregation
+**Learning:** Kanban boards using DND libraries (like @dnd-kit) are highly sensitive to re-renders during drag operations. Standardizing on `React.memo` for card components and ensuring that helper hooks like `useUserDirectory` provide stable function references via `useCallback` and `useMemo` is critical for maintaining 60fps during interactions. Additionally, aggregating multiple metrics (e.g., counts and total values) in a single O(N) pass within `useMemo` prevents redundant iterations in the render loop.
+**Action:** Always memoize individual item components in sortable/draggable lists and consolidate data processing into single-pass loops within `useMemo`.
