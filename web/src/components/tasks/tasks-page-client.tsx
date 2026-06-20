@@ -273,7 +273,7 @@ export function TasksPageClient() {
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button type="submit" disabled={isSubmitting}>
+                  <Button type="submit" loading={isSubmitting}>
                     Oluştur
                   </Button>
                 </DialogFooter>
