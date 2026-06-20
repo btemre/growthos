@@ -1,0 +1,3 @@
+## 2025-05-14 - Optimize DashboardHome KPI calculations
+**Learning:** To optimize multiple KPI calculations from a shared data array (e.g., leads or tasks), use a single-pass loop to categorize or aggregate items into a 'stats' object, reducing complexity from O(k*N) to O(N) where k is the number of metrics. Also, using a string-based `todayKey` (yyyy-MM-dd) stabilizes `useMemo` date dependencies that would otherwise change on every render.
+**Action:** Always look for opportunities to consolidate multiple `.filter()` or `.reduce()` calls on the same dataset into a single `for...of` loop, and use stable keys for time-sensitive dependencies.
