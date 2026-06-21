@@ -103,6 +103,7 @@ export function AppShell({
             size="icon"
             className="lg:hidden"
             onClick={() => setMobileOpen(false)}
+            aria-label="Kapat"
           >
             <X className="size-4" />
           </Button>
