@@ -98,87 +98,96 @@ export function DashboardHome() {
     };
   }, [uid, isAdmin]);
 
-  const todayStart = startOfDay(new Date());
-  const todayEnd = endOfDay(new Date());
-  const weekAgo = startOfDay(subDays(new Date(), 7));
-  const monthStart = startOfMonth(new Date());
+  // Stabilize date boundaries using a string key (yyyy-MM-dd)
+  const todayKey = format(new Date(), "yyyy-MM-dd");
 
   const stats = useMemo(() => {
-    const leadsToday = leads.filter((l) => {
+    // Reconstruct dates inside useMemo from todayKey for local timezone consistency
+    const [y, m, d] = todayKey.split("-").map(Number);
+    const now = new Date(y, m - 1, d);
+    const todayStart = startOfDay(now);
+    const todayEnd = endOfDay(now);
+    const weekAgo = startOfDay(subDays(now, 7));
+    const monthStart = startOfMonth(now);
+    const silentThreshold = subDays(new Date(), 3);
+
+    const result = {
+      leadsToday: 0,
+      callsToday: 0,
+      followUpsToday: 0,
+      enrolledThisMonth: 0,
+      closedSalesWeek: 0,
+      corpOpenedMonth: 0,
+      pipelineValue: 0,
+      hotSilent: [] as Lead[],
+      awaitingPayment: [] as Lead[],
+      overdueTasks: [] as Task[],
+    };
+
+    // Single-pass optimization for Leads (O(N))
+    leads.forEach((l) => {
       const c = l.createdAt;
-      if (!c) return false;
-      return !isBefore(c, todayStart) && !isAfter(c, todayEnd);
-    }).length;
-
-    const callsToday = activities.filter((a) => {
-      if (a.activityType !== "phone_call") return false;
-      const d = a.activityDate;
-      if (!d) return false;
-      return !isBefore(d, todayStart) && !isAfter(d, todayEnd);
-    }).length;
-
-    const followUpsToday = tasks.filter(
-      (t) =>
-        t.status === "open" &&
-        t.dueDate &&
-        !isBefore(t.dueDate, todayStart) &&
-        !isAfter(t.dueDate, todayEnd)
-    ).length;
-
-    const enrolledThisMonth = leads.filter((l) => {
-      if (l.educationStage !== "enrolled") return false;
       const u = l.updatedAt;
-      if (!u) return false;
-      return !isBefore(u, monthStart);
-    }).length;
 
-    const closedSalesWeek = leads.filter((l) => {
-      if (l.educationStage !== "enrolled") return false;
-      const u = l.updatedAt;
-      if (!u) return false;
-      return !isBefore(u, weekAgo);
-    }).length;
+      if (c && !isBefore(c, todayStart) && !isAfter(c, todayEnd)) {
+        result.leadsToday++;
+      }
 
-    const corpOpenedMonth = deals.filter((d) => {
-      const c = d.createdAt;
-      if (!c) return false;
-      return !isBefore(c, monthStart);
-    }).length;
+      if (l.educationStage === "enrolled") {
+        if (u && !isBefore(u, monthStart)) result.enrolledThisMonth++;
+        if (u && !isBefore(u, weekAgo)) result.closedSalesWeek++;
+      }
 
-    const pipelineValue = deals.reduce((acc, d) => acc + (d.estimatedValue ?? 0), 0);
+      if (l.type === "education_candidate" && l.score >= 50) {
+        const last = l.lastContactAt;
+        if (!last || isBefore(last, silentThreshold)) {
+          result.hotSilent.push(l);
+        }
+      }
 
-    const hotSilent = leads.filter((l) => {
-      if (l.type !== "education_candidate") return false;
-      if (l.score < 50) return false;
-      const last = l.lastContactAt;
-      if (!last) return true;
-      return isBefore(last, subDays(new Date(), 3));
+      if (l.educationStage === "awaiting_payment") {
+        result.awaitingPayment.push(l);
+      }
     });
 
-    const awaitingPayment = leads.filter(
-      (l) => l.educationStage === "awaiting_payment"
-    );
+    // Single-pass optimization for Tasks (O(N))
+    tasks.forEach((t) => {
+      if (t.status === "open" && t.dueDate) {
+        if (!isBefore(t.dueDate, todayStart) && !isAfter(t.dueDate, todayEnd)) {
+          result.followUpsToday++;
+        }
+        if (isBefore(t.dueDate, todayStart)) {
+          result.overdueTasks.push(t);
+        }
+      }
+    });
 
-    const overdueTasks = tasks.filter(
-      (t) =>
-        t.status === "open" &&
-        t.dueDate &&
-        isBefore(t.dueDate, todayStart)
-    );
+    // Single-pass optimization for Deals (O(N))
+    deals.forEach((d) => {
+      const c = d.createdAt;
+      if (c && !isBefore(c, monthStart)) {
+        result.corpOpenedMonth++;
+      }
+      result.pipelineValue += d.estimatedValue ?? 0;
+    });
 
-    return {
-      leadsToday,
-      callsToday,
-      followUpsToday,
-      enrolledThisMonth,
-      closedSalesWeek,
-      corpOpenedMonth,
-      pipelineValue,
-      hotSilent,
-      awaitingPayment,
-      overdueTasks,
-    };
-  }, [leads, tasks, deals, activities, todayStart, todayEnd, weekAgo, monthStart]);
+    // Single-pass optimization for Activities (O(N))
+    activities.forEach((a) => {
+      if (a.activityType === "phone_call") {
+        const d = a.activityDate;
+        if (d && !isBefore(d, todayStart) && !isAfter(d, todayEnd)) {
+          result.callsToday++;
+        }
+      }
+    });
+
+    return result;
+  }, [leads, tasks, deals, activities, todayKey]);
+
+  const openTasks = useMemo(
+    () => tasks.filter((t) => t.status === "open"),
+    [tasks]
+  );
 
   return (
     <div className="space-y-8">
@@ -325,11 +334,10 @@ export function DashboardHome() {
             <CardTitle className="text-base">Bugünkü görevler</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
-            {tasks.filter((t) => t.status === "open").length === 0 ? (
+            {openTasks.length === 0 ? (
               <p className="text-muted-foreground">Açık görev yok.</p>
             ) : (
-              tasks
-                .filter((t) => t.status === "open")
+              openTasks
                 .slice(0, 6)
                 .map((t) => (
                   <div
