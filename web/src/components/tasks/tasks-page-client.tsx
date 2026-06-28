@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { addDays, format, isBefore, startOfDay, startOfWeek, endOfWeek } from "date-fns";
 import { tr } from "date-fns/locale";
@@ -36,12 +36,12 @@ import { completeTask, createTask, subscribeTasksForUser } from "@/lib/firestore
 import { taskFormSchema, type TaskFormValues } from "@/lib/schemas/task";
 import type { Lead, Task } from "@/types/models";
 
-function TaskRow({
+const TaskRow = memo(function TaskRow({
   task,
   onComplete,
 }: {
   task: Task;
-  onComplete: () => void;
+  onComplete: (taskId: string) => void;
 }) {
   return (
     <Card className="border-border/80">
@@ -64,14 +64,14 @@ function TaskRow({
             : "—"}
         </span>
         {task.status === "open" ? (
-          <Button size="sm" variant="outline" onClick={onComplete}>
+          <Button size="sm" variant="outline" onClick={() => onComplete(task.id)}>
             Tamamla
           </Button>
         ) : null}
       </CardContent>
     </Card>
   );
-}
+});
 
 export function TasksPageClient() {
   const searchParams = useSearchParams();
@@ -118,51 +118,62 @@ export function TasksPageClient() {
     [leads]
   );
 
-  const todayStart = startOfDay(new Date());
-  const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
-  const weekEnd = endOfWeek(new Date(), { weekStartsOn: 1 });
+  // Performance: todayKey stabilizes date calculations to once per day.
+  const todayKey = format(new Date(), "yyyy-MM-dd");
 
+  const { todayStart, todayEnd, weekStart, weekEnd } = useMemo(() => {
+    const [y, m, d] = todayKey.split("-").map(Number);
+    const now = new Date(y, m - 1, d);
+    return {
+      todayStart: startOfDay(now),
+      todayEnd: addDays(startOfDay(now), 1),
+      weekStart: startOfWeek(now, { weekStartsOn: 1 }),
+      weekEnd: endOfWeek(now, { weekStartsOn: 1 }),
+    };
+  }, [todayKey]);
+
+  // Performance: single-pass O(N) grouping logic avoids multiple .filter calls.
   const grouped = useMemo(() => {
-    let list = tasks;
-    if (filterOverdue) {
-      list = list.filter(
-        (t) =>
-          t.status === "open" && t.dueDate && isBefore(t.dueDate, todayStart)
-      );
-    }
-    const overdue = list.filter(
-      (t) =>
-        t.status === "open" && t.dueDate && isBefore(t.dueDate, todayStart)
-    );
-    const todayEnd = addDays(todayStart, 1);
-    const today = list.filter(
-      (t) =>
-        t.status === "open" &&
+    const overdue: Task[] = [];
+    const today: Task[] = [];
+    const thisWeek: Task[] = [];
+    const later: Task[] = [];
+    const all: Task[] = filterOverdue ? [] : tasks;
+
+    tasks.forEach((t) => {
+      if (t.status !== "open") return;
+
+      const isOverdue = t.dueDate && isBefore(t.dueDate, todayStart);
+
+      if (filterOverdue) {
+        if (isOverdue) {
+          overdue.push(t);
+          all.push(t);
+        }
+        return;
+      }
+
+      if (isOverdue) {
+        overdue.push(t);
+      } else if (
         t.dueDate &&
         !isBefore(t.dueDate, todayStart) &&
         isBefore(t.dueDate, todayEnd)
-    );
-    const todayIds = new Set(today.map((t) => t.id));
-    const overdueIds = new Set(overdue.map((t) => t.id));
-    const thisWeek = list.filter(
-      (t) =>
-        t.status === "open" &&
+      ) {
+        today.push(t);
+      } else if (
         t.dueDate &&
         !isBefore(t.dueDate, weekStart) &&
-        !isBefore(weekEnd, t.dueDate) &&
-        !todayIds.has(t.id) &&
-        !overdueIds.has(t.id)
-    );
-    const weekIds = new Set(thisWeek.map((t) => t.id));
-    const later = list.filter(
-      (t) =>
-        t.status === "open" &&
-        !overdueIds.has(t.id) &&
-        !todayIds.has(t.id) &&
-        !weekIds.has(t.id)
-    );
-    return { overdue, today, thisWeek, later, all: list };
-  }, [tasks, todayStart, weekStart, weekEnd, filterOverdue]);
+        !isBefore(weekEnd, t.dueDate)
+      ) {
+        thisWeek.push(t);
+      } else {
+        later.push(t);
+      }
+    });
+
+    return { overdue, today, thisWeek, later, all };
+  }, [tasks, todayStart, todayEnd, weekStart, weekEnd, filterOverdue]);
 
   async function onCreate(values: TaskFormValues) {
     if (!uid) return;
@@ -185,16 +196,16 @@ export function TasksPageClient() {
     }
   }
 
-  async function complete(t: Task) {
+  const complete = useCallback(async (taskId: string) => {
     try {
       const db = getFirebaseDb();
-      await completeTask(db, t.id);
+      await completeTask(db, taskId);
       toast.success("Tamamlandı");
     } catch (e) {
       console.error(e);
       toast.error("İşlem başarısız");
     }
-  }
+  }, []);
 
   const sections = filterOverdue
     ? [{ title: "Geciken", items: grouped.overdue }]
@@ -292,7 +303,7 @@ export function TasksPageClient() {
               </h3>
               <div className="grid gap-3">
                 {sec.items.map((t) => (
-                  <TaskRow key={t.id} task={t} onComplete={() => void complete(t)} />
+                  <TaskRow key={t.id} task={t} onComplete={complete} />
                 ))}
               </div>
             </div>
