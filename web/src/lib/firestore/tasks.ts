@@ -14,6 +14,38 @@ import {
 import type { Task, TaskType } from "@/types/models";
 import { taskFromDoc } from "./serialize";
 
+export function subscribeTasksForRelated(
+  db: Firestore,
+  uid: string,
+  isAdmin: boolean,
+  relatedType: string,
+  relatedId: string,
+  onData: (tasks: Task[]) => void,
+  onError?: (e: Error) => void
+): Unsubscribe {
+  const col = collection(db, "tasks");
+  const q = isAdmin
+    ? query(
+        col,
+        where("relatedType", "==", relatedType),
+        where("relatedId", "==", relatedId),
+        orderBy("createdAt", "desc")
+      )
+    : query(
+        col,
+        where("assignedTo", "==", uid),
+        where("relatedType", "==", relatedType),
+        where("relatedId", "==", relatedId),
+        orderBy("createdAt", "desc")
+      );
+
+  return onSnapshot(
+    q,
+    (snap) => onData(snap.docs.map((d) => taskFromDoc(d.id, d.data()))),
+    (err) => onError?.(err as Error)
+  );
+}
+
 export function subscribeTasksForUser(
   db: Firestore,
   uid: string,
