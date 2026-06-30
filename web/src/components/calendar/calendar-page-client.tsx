@@ -52,11 +52,18 @@ export function CalendarPageClient() {
     };
   }, [uid, isAdmin]);
 
-  const events = useMemo(() => {
-    const list: CalEvent[] = [];
+  // Memoize events grouped by date string (yyyy-MM-dd) to optimize lookups
+  const eventsByDate = useMemo(() => {
+    const map = new Map<string, CalEvent[]>();
+    const addEvent = (date: Date, event: CalEvent) => {
+      const key = format(date, "yyyy-MM-dd");
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(event);
+    };
+
     for (const t of tasks) {
       if (!t.dueDate || t.status !== "open") continue;
-      list.push({
+      addEvent(t.dueDate, {
         id: `task-${t.id}`,
         date: t.dueDate,
         title: t.title,
@@ -66,7 +73,7 @@ export function CalendarPageClient() {
     }
     for (const l of leads) {
       if (!l.nextActionAt) continue;
-      list.push({
+      addEvent(l.nextActionAt, {
         id: `lead-${l.id}`,
         date: l.nextActionAt,
         title: `${l.name} — aksiyon`,
@@ -74,18 +81,22 @@ export function CalendarPageClient() {
         kind: "lead",
       });
     }
-    return list;
+    return map;
   }, [tasks, leads]);
 
-  const monthStart = startOfMonth(viewMonth);
-  const monthEnd = endOfMonth(viewMonth);
-  const gridStart = startOfWeek(monthStart, { weekStartsOn: 1 });
-  const gridEnd = startOfWeek(addDays(monthEnd, 6), { weekStartsOn: 1 });
-  const days = eachDayOfInterval({ start: gridStart, end: addDays(gridEnd, 6) });
+  // Memoize calendar grid generation
+  const days = useMemo(() => {
+    const monthStart = startOfMonth(viewMonth);
+    const monthEnd = endOfMonth(viewMonth);
+    const gridStart = startOfWeek(monthStart, { weekStartsOn: 1 });
+    const gridEnd = startOfWeek(addDays(monthEnd, 6), { weekStartsOn: 1 });
+    return eachDayOfInterval({ start: gridStart, end: addDays(gridEnd, 6) });
+  }, [viewMonth]);
 
-  const selectedDayEvents = events.filter((e) =>
-    isSameDay(e.date, selectedDay)
-  );
+  // O(1) lookup for selected day events
+  const selectedDayEvents = useMemo(() => {
+    return eventsByDate.get(format(selectedDay, "yyyy-MM-dd")) ?? [];
+  }, [eventsByDate, selectedDay]);
 
   return (
     <div className="space-y-6">
@@ -129,7 +140,8 @@ export function CalendarPageClient() {
           </div>
           <div className="grid grid-cols-7 gap-1">
             {days.map((day) => {
-              const dayEvents = events.filter((e) => isSameDay(e.date, day));
+              const key = format(day, "yyyy-MM-dd");
+              const dayEvents = eventsByDate.get(key) ?? [];
               const inMonth = isSameMonth(day, viewMonth);
               const selected = isSameDay(day, selectedDay);
               return (
