@@ -92,12 +92,12 @@ export function LeadFormDialog({ ownerId }: { ownerId: string }) {
               ) : null}
             </div>
             <div className="space-y-2">
-              <Label>Tür</Label>
+              <Label htmlFor="lead-type">Tür</Label>
               <Select
                 value={type}
                 onValueChange={(v) => v && setValue("type", v as LeadType)}
               >
-                <SelectTrigger>
+                <SelectTrigger id="lead-type">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -110,12 +110,12 @@ export function LeadFormDialog({ ownerId }: { ownerId: string }) {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Kaynak</Label>
+              <Label htmlFor="lead-source">Kaynak</Label>
               <Select
                 value={source}
                 onValueChange={(v) => v && setValue("source", v as LeadSource)}
               >
-                <SelectTrigger>
+                <SelectTrigger id="lead-source">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -143,7 +143,7 @@ export function LeadFormDialog({ ownerId }: { ownerId: string }) {
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               İptal
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
+            <Button type="submit" loading={isSubmitting}>
               Kaydet
             </Button>
           </DialogFooter>
