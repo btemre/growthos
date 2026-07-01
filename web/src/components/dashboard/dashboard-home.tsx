@@ -98,87 +98,96 @@ export function DashboardHome() {
     };
   }, [uid, isAdmin]);
 
-  const todayStart = startOfDay(new Date());
-  const todayEnd = endOfDay(new Date());
-  const weekAgo = startOfDay(subDays(new Date(), 7));
-  const monthStart = startOfMonth(new Date());
+  // Use a string-based todayKey to stabilize useMemo dependencies and ensure
+  // midnight updates while preventing unnecessary re-renders during the day.
+  const todayKey = format(new Date(), "yyyy-MM-dd");
 
   const stats = useMemo(() => {
-    const leadsToday = leads.filter((l) => {
-      const c = l.createdAt;
-      if (!c) return false;
-      return !isBefore(c, todayStart) && !isAfter(c, todayEnd);
-    }).length;
+    const [year, month, day] = todayKey.split("-").map(Number);
+    const today = new Date(year, month - 1, day);
 
-    const callsToday = activities.filter((a) => {
-      if (a.activityType !== "phone_call") return false;
-      const d = a.activityDate;
-      if (!d) return false;
-      return !isBefore(d, todayStart) && !isAfter(d, todayEnd);
-    }).length;
+    const todayStart = startOfDay(today);
+    const todayEnd = endOfDay(today);
+    const weekAgo = startOfDay(subDays(today, 7));
+    const monthStart = startOfMonth(today);
+    const threeDaysAgo = subDays(today, 3);
 
-    const followUpsToday = tasks.filter(
-      (t) =>
-        t.status === "open" &&
-        t.dueDate &&
-        !isBefore(t.dueDate, todayStart) &&
-        !isAfter(t.dueDate, todayEnd)
-    ).length;
+    // Initial stats object
+    const results = {
+      leadsToday: 0,
+      callsToday: 0,
+      followUpsToday: 0,
+      enrolledThisMonth: 0,
+      closedSalesWeek: 0,
+      corpOpenedMonth: 0,
+      pipelineValue: 0,
+      hotSilent: [] as Lead[],
+      awaitingPayment: [] as Lead[],
+      overdueTasks: [] as Task[],
+      openTasks: [] as Task[],
+    };
 
-    const enrolledThisMonth = leads.filter((l) => {
-      if (l.educationStage !== "enrolled") return false;
-      const u = l.updatedAt;
-      if (!u) return false;
-      return !isBefore(u, monthStart);
-    }).length;
+    // Single-pass leads processing
+    leads.forEach((l) => {
+      if (l.createdAt && !isBefore(l.createdAt, todayStart) && !isAfter(l.createdAt, todayEnd)) {
+        results.leadsToday++;
+      }
 
-    const closedSalesWeek = leads.filter((l) => {
-      if (l.educationStage !== "enrolled") return false;
-      const u = l.updatedAt;
-      if (!u) return false;
-      return !isBefore(u, weekAgo);
-    }).length;
+      if (l.educationStage === "enrolled") {
+        if (l.updatedAt && !isBefore(l.updatedAt, monthStart)) {
+          results.enrolledThisMonth++;
+        }
+        if (l.updatedAt && !isBefore(l.updatedAt, weekAgo)) {
+          results.closedSalesWeek++;
+        }
+      }
 
-    const corpOpenedMonth = deals.filter((d) => {
-      const c = d.createdAt;
-      if (!c) return false;
-      return !isBefore(c, monthStart);
-    }).length;
+      if (l.educationStage === "awaiting_payment") {
+        results.awaitingPayment.push(l);
+      }
 
-    const pipelineValue = deals.reduce((acc, d) => acc + (d.estimatedValue ?? 0), 0);
-
-    const hotSilent = leads.filter((l) => {
-      if (l.type !== "education_candidate") return false;
-      if (l.score < 50) return false;
-      const last = l.lastContactAt;
-      if (!last) return true;
-      return isBefore(last, subDays(new Date(), 3));
+      if (l.type === "education_candidate" && l.score >= 50) {
+        const last = l.lastContactAt;
+        if (!last || isBefore(last, threeDaysAgo)) {
+          results.hotSilent.push(l);
+        }
+      }
     });
 
-    const awaitingPayment = leads.filter(
-      (l) => l.educationStage === "awaiting_payment"
-    );
+    // Single-pass activities processing
+    activities.forEach((a) => {
+      if (a.activityType === "phone_call" && a.activityDate) {
+        if (!isBefore(a.activityDate, todayStart) && !isAfter(a.activityDate, todayEnd)) {
+          results.callsToday++;
+        }
+      }
+    });
 
-    const overdueTasks = tasks.filter(
-      (t) =>
-        t.status === "open" &&
-        t.dueDate &&
-        isBefore(t.dueDate, todayStart)
-    );
+    // Single-pass tasks processing
+    tasks.forEach((t) => {
+      if (t.status === "open" && t.dueDate) {
+        if (!isBefore(t.dueDate, todayStart) && !isAfter(t.dueDate, todayEnd)) {
+          results.followUpsToday++;
+        }
+        if (isBefore(t.dueDate, todayStart)) {
+          results.overdueTasks.push(t);
+        }
+        if (results.openTasks.length < 6) {
+          results.openTasks.push(t);
+        }
+      }
+    });
 
-    return {
-      leadsToday,
-      callsToday,
-      followUpsToday,
-      enrolledThisMonth,
-      closedSalesWeek,
-      corpOpenedMonth,
-      pipelineValue,
-      hotSilent,
-      awaitingPayment,
-      overdueTasks,
-    };
-  }, [leads, tasks, deals, activities, todayStart, todayEnd, weekAgo, monthStart]);
+    // Single-pass deals processing
+    deals.forEach((d) => {
+      if (d.createdAt && !isBefore(d.createdAt, monthStart)) {
+        results.corpOpenedMonth++;
+      }
+      results.pipelineValue += d.estimatedValue ?? 0;
+    });
+
+    return results;
+  }, [leads, tasks, deals, activities, todayKey]);
 
   return (
     <div className="space-y-8">
@@ -325,25 +334,22 @@ export function DashboardHome() {
             <CardTitle className="text-base">Bugünkü görevler</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
-            {tasks.filter((t) => t.status === "open").length === 0 ? (
+            {stats.openTasks.length === 0 ? (
               <p className="text-muted-foreground">Açık görev yok.</p>
             ) : (
-              tasks
-                .filter((t) => t.status === "open")
-                .slice(0, 6)
-                .map((t) => (
-                  <div
-                    key={t.id}
-                    className="flex items-center justify-between gap-2 rounded-md border border-border/60 bg-card/50 px-3 py-2"
-                  >
-                    <span className="truncate font-medium">{t.title}</span>
-                    <span className="shrink-0 text-xs text-muted-foreground">
-                      {t.dueDate
-                        ? format(t.dueDate, "d MMM", { locale: tr })
-                        : "—"}
-                    </span>
-                  </div>
-                ))
+              stats.openTasks.map((t) => (
+                <div
+                  key={t.id}
+                  className="flex items-center justify-between gap-2 rounded-md border border-border/60 bg-card/50 px-3 py-2"
+                >
+                  <span className="truncate font-medium">{t.title}</span>
+                  <span className="shrink-0 text-xs text-muted-foreground">
+                    {t.dueDate
+                      ? format(t.dueDate, "d MMM", { locale: tr })
+                      : "—"}
+                  </span>
+                </div>
+              ))
             )}
             <Link
               href="/tasks"
