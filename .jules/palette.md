@@ -1,0 +1,3 @@
+## 2025-05-15 - [Button Loading State & Accessibility Association]
+**Learning:** Centrally managing `loading` states in the `Button` component ensures consistent keyboard accessibility (via `disabled` and `aria-busy`) and visual feedback (via `Loader2Icon`) without duplicating logic in every form. Programmatically associating labels with `SelectTrigger` components via `id` and `htmlFor` is essential for semantic accessibility in custom design systems.
+**Action:** Always check core UI components for shared UX patterns before implementing local state logic. Ensure custom interactive components correctly forward `id` for label association.
