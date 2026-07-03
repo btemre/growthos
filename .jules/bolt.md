@@ -1,0 +1,3 @@
+## 2025-07-03 - [Stable date keys and single-pass loops]
+**Learning:** React memoization often breaks when dependencies include objects/dates recreated on every render (e.g., `new Date()`). Using a value-stable `todayKey` string (YYYY-MM-DD) and deriving date objects inside the hook ensures consistent memoization. Additionally, multiple array traversals (.filter, .reduce) in complex dashboards can be significantly improved by refactoring to a single O(N) `forEach` pass.
+**Action:** Always check if `useMemo` dependencies are value-stable (strings/numbers/memoized objects) and prioritize single-pass loops over multiple filter/map/reduce chains for large datasets.
