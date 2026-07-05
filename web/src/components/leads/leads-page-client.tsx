@@ -13,7 +13,7 @@ import {
   type SortingState,
 } from "@tanstack/react-table";
 import { ArrowUpDown, MessageCircle, Phone } from "lucide-react";
-import { format, isBefore, startOfDay } from "date-fns";
+import { format, isBefore } from "date-fns";
 import { tr } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -61,6 +61,7 @@ export function LeadsPageClient() {
 
   const uid = firebaseUser?.uid ?? "";
   const isAdmin = profile?.role === "admin";
+  const todayKey = format(new Date(), "yyyy-MM-dd");
 
   useEffect(() => {
     if (!uid) return;
@@ -80,9 +81,10 @@ export function LeadsPageClient() {
     });
   }, []);
 
-  const todayStart = startOfDay(new Date());
-
   const filtered = useMemo(() => {
+    const [y, m, d] = todayKey.split("-").map(Number);
+    const todayStart = new Date(y, m - 1, d);
+
     return leads.filter((l) => {
       if (typeFilter !== "all" && l.type !== typeFilter) return false;
       if (sourceFilter !== "all" && l.source !== sourceFilter) return false;
@@ -95,7 +97,7 @@ export function LeadsPageClient() {
       if (tagFilter !== "all" && !l.tagIds?.includes(tagFilter)) return false;
       return true;
     });
-  }, [leads, typeFilter, sourceFilter, preset, tagFilter, todayStart, uid]);
+  }, [leads, typeFilter, sourceFilter, preset, tagFilter, todayKey, uid]);
 
   const columns = useMemo<ColumnDef<Lead>[]>(
     () => [

@@ -37,6 +37,36 @@ export function subscribeTasksForUser(
   );
 }
 
+export function subscribeTasksForRelated(
+  db: Firestore,
+  options: {
+    uid: string;
+    isAdmin: boolean;
+    relatedType: Task["relatedType"];
+    relatedId: string;
+  },
+  onData: (tasks: Task[]) => void,
+  onError?: (e: Error) => void
+): Unsubscribe {
+  const col = collection(db, "tasks");
+  let q = query(
+    col,
+    where("relatedType", "==", options.relatedType),
+    where("relatedId", "==", options.relatedId),
+    orderBy("createdAt", "desc")
+  );
+
+  if (!options.isAdmin) {
+    q = query(q, where("assignedTo", "==", options.uid));
+  }
+
+  return onSnapshot(
+    q,
+    (snap) => onData(snap.docs.map((d) => taskFromDoc(d.id, d.data()))),
+    (err) => onError?.(err as Error)
+  );
+}
+
 export async function createTask(
   db: Firestore,
   input: {
