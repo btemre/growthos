@@ -1,0 +1,3 @@
+## 2026-07-06 - Centralized Loading States & Form Accessibility
+**Learning:** Centrally managing `loading` states in the `Button` component ensures consistent keyboard accessibility (via `disabled` and `aria-busy`) and visual feedback (via `Loader2Icon`) without duplicating logic in every form. For `Select` components, using the standard HTML `id` on the trigger and `htmlFor` on the label is the preferred pattern for semantic accessibility.
+**Action:** Always check if core UI components support `loading` states before manually implementing them in forms. Ensure all interactive form elements have programmatically associated labels.
