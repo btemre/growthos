@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   endOfDay,
   format,
@@ -32,7 +32,7 @@ import { subscribeTasksForUser } from "@/lib/firestore/tasks";
 import { subscribeDealsForUser } from "@/lib/firestore/deals";
 import type { Activity, Deal, Lead, Task } from "@/types/models";
 
-function KpiCard({
+const KpiCard = React.memo(function KpiCard({
   title,
   value,
   hint,
@@ -67,7 +67,7 @@ function KpiCard({
     );
   }
   return inner;
-}
+});
 
 export function DashboardHome() {
   const { firebaseUser, profile } = useAuth();
@@ -98,87 +98,80 @@ export function DashboardHome() {
     };
   }, [uid, isAdmin]);
 
-  const todayStart = startOfDay(new Date());
-  const todayEnd = endOfDay(new Date());
-  const weekAgo = startOfDay(subDays(new Date(), 7));
-  const monthStart = startOfMonth(new Date());
+  // Use a string key for "today" to stabilize useMemo dependencies across renders
+  // while ensuring it updates if the app is left open past midnight.
+  const todayKey = format(new Date(), "yyyy-MM-dd");
 
   const stats = useMemo(() => {
-    const leadsToday = leads.filter((l) => {
-      const c = l.createdAt;
-      if (!c) return false;
-      return !isBefore(c, todayStart) && !isAfter(c, todayEnd);
-    }).length;
+    // Reconstruct dates within useMemo using the stable todayKey
+    const [year, month, day] = todayKey.split("-").map(Number);
+    const now = new Date(year, month - 1, day);
+    const todayStart = startOfDay(now);
+    const todayEnd = endOfDay(now);
+    const weekAgo = startOfDay(subDays(now, 7));
+    const monthStart = startOfMonth(now);
+    const hotSilentThreshold = subDays(new Date(), 3);
 
-    const callsToday = activities.filter((a) => {
-      if (a.activityType !== "phone_call") return false;
-      const d = a.activityDate;
-      if (!d) return false;
-      return !isBefore(d, todayStart) && !isAfter(d, todayEnd);
-    }).length;
+    const result = {
+      leadsToday: 0,
+      callsToday: 0,
+      followUpsToday: 0,
+      enrolledThisMonth: 0,
+      closedSalesWeek: 0,
+      corpOpenedMonth: 0,
+      pipelineValue: 0,
+      hotSilent: [] as Lead[],
+      awaitingPayment: [] as Lead[],
+      overdueTasks: [] as Task[],
+    };
 
-    const followUpsToday = tasks.filter(
-      (t) =>
-        t.status === "open" &&
-        t.dueDate &&
-        !isBefore(t.dueDate, todayStart) &&
-        !isAfter(t.dueDate, todayEnd)
-    ).length;
-
-    const enrolledThisMonth = leads.filter((l) => {
-      if (l.educationStage !== "enrolled") return false;
-      const u = l.updatedAt;
-      if (!u) return false;
-      return !isBefore(u, monthStart);
-    }).length;
-
-    const closedSalesWeek = leads.filter((l) => {
-      if (l.educationStage !== "enrolled") return false;
-      const u = l.updatedAt;
-      if (!u) return false;
-      return !isBefore(u, weekAgo);
-    }).length;
-
-    const corpOpenedMonth = deals.filter((d) => {
-      const c = d.createdAt;
-      if (!c) return false;
-      return !isBefore(c, monthStart);
-    }).length;
-
-    const pipelineValue = deals.reduce((acc, d) => acc + (d.estimatedValue ?? 0), 0);
-
-    const hotSilent = leads.filter((l) => {
-      if (l.type !== "education_candidate") return false;
-      if (l.score < 50) return false;
-      const last = l.lastContactAt;
-      if (!last) return true;
-      return isBefore(last, subDays(new Date(), 3));
+    // Single-pass O(N) calculations for each collection
+    leads.forEach((l) => {
+      if (l.createdAt && !isBefore(l.createdAt, todayStart) && !isAfter(l.createdAt, todayEnd)) {
+        result.leadsToday++;
+      }
+      if (l.educationStage === "enrolled") {
+        if (l.updatedAt && !isBefore(l.updatedAt, monthStart)) result.enrolledThisMonth++;
+        if (l.updatedAt && !isBefore(l.updatedAt, weekAgo)) result.closedSalesWeek++;
+      }
+      if (l.educationStage === "awaiting_payment") {
+        result.awaitingPayment.push(l);
+      }
+      if (l.type === "education_candidate" && l.score >= 50) {
+        if (!l.lastContactAt || isBefore(l.lastContactAt, hotSilentThreshold)) {
+          result.hotSilent.push(l);
+        }
+      }
     });
 
-    const awaitingPayment = leads.filter(
-      (l) => l.educationStage === "awaiting_payment"
-    );
+    activities.forEach((a) => {
+      if (a.activityType === "phone_call" && a.activityDate) {
+        if (!isBefore(a.activityDate, todayStart) && !isAfter(a.activityDate, todayEnd)) {
+          result.callsToday++;
+        }
+      }
+    });
 
-    const overdueTasks = tasks.filter(
-      (t) =>
-        t.status === "open" &&
-        t.dueDate &&
-        isBefore(t.dueDate, todayStart)
-    );
+    tasks.forEach((t) => {
+      if (t.status === "open" && t.dueDate) {
+        if (!isBefore(t.dueDate, todayStart) && !isAfter(t.dueDate, todayEnd)) {
+          result.followUpsToday++;
+        }
+        if (isBefore(t.dueDate, todayStart)) {
+          result.overdueTasks.push(t);
+        }
+      }
+    });
 
-    return {
-      leadsToday,
-      callsToday,
-      followUpsToday,
-      enrolledThisMonth,
-      closedSalesWeek,
-      corpOpenedMonth,
-      pipelineValue,
-      hotSilent,
-      awaitingPayment,
-      overdueTasks,
-    };
-  }, [leads, tasks, deals, activities, todayStart, todayEnd, weekAgo, monthStart]);
+    deals.forEach((d) => {
+      result.pipelineValue += d.estimatedValue ?? 0;
+      if (d.createdAt && !isBefore(d.createdAt, monthStart)) {
+        result.corpOpenedMonth++;
+      }
+    });
+
+    return result;
+  }, [leads, tasks, deals, activities, todayKey]);
 
   return (
     <div className="space-y-8">
