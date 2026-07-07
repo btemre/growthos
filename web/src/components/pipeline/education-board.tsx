@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   DndContext,
   type DragEndEvent,
@@ -62,7 +62,7 @@ function StageColumn({
   );
 }
 
-function LeadCard({ lead, ownerLabel }: { lead: Lead; ownerLabel: string }) {
+const LeadCard = React.memo(function LeadCard({ lead, ownerLabel }: { lead: Lead; ownerLabel: string }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({ id: lead.id });
 
@@ -113,7 +113,7 @@ function LeadCard({ lead, ownerLabel }: { lead: Lead; ownerLabel: string }) {
       </Card>
     </div>
   );
-}
+});
 
 export function EducationBoard() {
   const { firebaseUser, profile } = useAuth();
@@ -133,15 +133,16 @@ export function EducationBoard() {
   }, [uid, isAdmin]);
 
   const byStage = useMemo(() => {
-    const map = new Map<EducationStage, Lead[]>();
-    EDUCATION_STAGES.forEach((s) => map.set(s, []));
-    leads
-      .filter((l) => l.type === "education_candidate")
-      .forEach((l) => {
-        const list = map.get(l.educationStage) ?? [];
-        list.push(l);
-        map.set(l.educationStage, list);
-      });
+    const map = new Map<EducationStage, { list: Lead[]; count: number }>();
+    EDUCATION_STAGES.forEach((s) => map.set(s, { list: [], count: 0 }));
+    leads.forEach((l) => {
+      if (l.type !== "education_candidate") return;
+      const entry = map.get(l.educationStage);
+      if (entry) {
+        entry.list.push(l);
+        entry.count++;
+      }
+    });
     return map;
   }, [leads]);
 
@@ -188,21 +189,24 @@ export function EducationBoard() {
         />
         <div className="w-full overflow-x-auto pb-2">
           <div className="flex min-w-min gap-3 pb-2">
-            {EDUCATION_STAGES.map((stage) => (
-              <StageColumn
-                key={stage}
-                stage={stage}
-                count={(byStage.get(stage) ?? []).length}
-              >
-                {(byStage.get(stage) ?? []).map((lead) => (
-                  <LeadCard
-                    key={lead.id}
-                    lead={lead}
-                    ownerLabel={resolveOwner(lead.ownerId, uid)}
-                  />
-                ))}
-              </StageColumn>
-            ))}
+            {EDUCATION_STAGES.map((stage) => {
+              const entry = byStage.get(stage) ?? { list: [], count: 0 };
+              return (
+                <StageColumn
+                  key={stage}
+                  stage={stage}
+                  count={entry.count}
+                >
+                  {entry.list.map((lead) => (
+                    <LeadCard
+                      key={lead.id}
+                      lead={lead}
+                      ownerLabel={resolveOwner(lead.ownerId, uid)}
+                    />
+                  ))}
+                </StageColumn>
+              );
+            })}
           </div>
         </div>
       </div>
