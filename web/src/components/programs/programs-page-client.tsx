@@ -367,8 +367,8 @@ export function ProgramsPageClient() {
               </div>
             </div>
             <DialogFooter>
-              <Button type="submit" disabled={busy}>
-                {busy ? "Kaydediliyor…" : "Kaydet"}
+              <Button type="submit" loading={busy}>
+                Kaydet
               </Button>
             </DialogFooter>
           </form>
