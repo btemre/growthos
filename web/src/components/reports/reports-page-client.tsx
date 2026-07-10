@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import {
   endOfDay,
   endOfWeek,
+  format,
   startOfDay,
   startOfMonth,
   startOfWeek,
@@ -87,8 +88,13 @@ export function ReportsPageClient() {
     profile?.role === "mentor" ||
     profile?.role === "education_sales";
 
+  // Stabilize date dependencies using todayKey pattern
+  const todayKey = format(new Date(), "yyyy-MM-dd");
+
   const range = useMemo(() => {
-    const now = new Date();
+    const [y, m, d] = todayKey.split("-").map(Number);
+    const now = new Date(y, m - 1, d);
+
     if (preset === "custom" && customStart && customEnd) {
       return {
         start: startOfDay(new Date(customStart)),
@@ -108,7 +114,7 @@ export function ReportsPageClient() {
       start: startOfWeek(now, { weekStartsOn: 1 }),
       end: endOfWeek(now, { weekStartsOn: 1 }),
     };
-  }, [preset, customStart, customEnd]);
+  }, [preset, customStart, customEnd, todayKey]);
 
   useEffect(() => {
     if (!isAdmin || !uid) return;
@@ -141,6 +147,7 @@ export function ReportsPageClient() {
   }, [uid, isAdmin]);
 
   const dealIds = useMemo(() => deals.map((d) => d.id), [deals]);
+  const dealIdsKey = dealIds.join(",");
 
   useEffect(() => {
     if (!uid || !showCorporate) return;
@@ -150,7 +157,8 @@ export function ReportsPageClient() {
       { isAdmin, dealIds },
       setProposals
     );
-  }, [uid, isAdmin, showCorporate, dealIds.join(",")]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [uid, isAdmin, showCorporate, dealIdsKey]);
 
   useEffect(() => {
     if (!uid || !showEnrollmentsBlock) return;
@@ -169,155 +177,201 @@ export function ReportsPageClient() {
     );
   }, [uid, range.start, range.end]);
 
-  const leadsInRange = useMemo(
-    () => leads.filter((l) => inRange(l.createdAt, range.start, range.end)),
-    [leads, range.start, range.end]
-  );
+  const statsInRange = useMemo(() => {
+    const start = range.start;
+    const end = range.end;
 
-  const bySource = useMemo(() => {
-    const counts: Record<string, number> = {};
+    const leadsInRange: Lead[] = [];
+    const enrolledInRange: Lead[] = [];
+    const sourceCounts: Record<string, number> = {};
     LEAD_SOURCES.forEach((s) => {
-      counts[s] = 0;
+      sourceCounts[s] = 0;
     });
-    leadsInRange.forEach((l) => {
-      counts[l.source] = (counts[l.source] ?? 0) + 1;
-    });
-    return LEAD_SOURCES.map((s) => ({
-      key: s,
-      name: LABELS.source[s],
-      count: counts[s] ?? 0,
-    }));
-  }, [leadsInRange]);
 
-  const enrolledInRange = useMemo(
-    () =>
-      leads.filter(
-        (l) =>
-          l.educationStage === "enrolled" &&
-          inRange(l.updatedAt, range.start, range.end)
-      ),
-    [leads, range.start, range.end]
-  );
-
-  const enrollmentsInRange = useMemo(
-    () =>
-      enrollments.filter((e) =>
-        inRange(e.createdAt, range.start, range.end)
-      ),
-    [enrollments, range.start, range.end]
-  );
-
-  const discussionActivities = useMemo(
-    () =>
-      activities.filter((a) =>
-        ["phone_call", "whatsapp", "meeting"].includes(a.activityType)
-      ),
-    [activities]
-  );
-
-  const proposalsSentInRange = useMemo(
-    () =>
-      proposals.filter((p) => {
-        if (p.status !== "sent" && p.status !== "accepted") return false;
-        const t = p.sentAt ?? p.updatedAt;
-        return inRange(t, range.start, range.end);
-      }),
-    [proposals, range.start, range.end]
-  );
-
-  const dealsWonInRange = useMemo(
-    () =>
-      deals.filter(
-        (d) => d.stage === "won" && inRange(d.updatedAt, range.start, range.end)
-      ),
-    [deals, range.start, range.end]
-  );
-
-  const pipelineBottleneck = useMemo(() => {
-    const counts = new Map<DealStage, number>();
-    CORPORATE_DEAL_STAGES.forEach((s) => counts.set(s, 0));
-    deals.forEach((d) => {
-      if (d.stage === "won" || d.stage === "lost") return;
-      counts.set(d.stage, (counts.get(d.stage) ?? 0) + 1);
-    });
-    let best: DealStage | null = null;
-    let max = 0;
-    counts.forEach((n, s) => {
-      if (n > max) {
-        max = n;
-        best = s;
+    leads.forEach((l) => {
+      if (inRange(l.createdAt, start, end)) {
+        leadsInRange.push(l);
+        sourceCounts[l.source] = (sourceCounts[l.source] ?? 0) + 1;
+      }
+      if (
+        l.educationStage === "enrolled" &&
+        inRange(l.updatedAt, start, end)
+      ) {
+        enrolledInRange.push(l);
       }
     });
-    return best && max > 0
-      ? { stage: best, count: max }
-      : null;
-  }, [deals]);
 
-  const tasksDoneInRange = useMemo(
-    () =>
-      tasks.filter(
-        (t) =>
-          t.status === "done" &&
-          inRange(t.completedAt, range.start, range.end)
-      ),
-    [tasks, range.start, range.end]
-  );
-
-  const tasksOverdueOpen = useMemo(() => {
-    const now = new Date();
-    return tasks.filter(
-      (t) =>
-        t.status === "open" &&
-        t.dueDate &&
-        t.dueDate < now
+    const enrollmentsInRange = enrollments.filter((e) =>
+      inRange(e.createdAt, start, end)
     );
-  }, [tasks]);
 
-  const ownerStats = useMemo(() => {
-    if (!isAdmin) return [];
-    const map = new Map<
-      string,
-      { leadsNew: number; dealsWon: number }
-    >();
-    leadsInRange.forEach((l) => {
-      const o = l.ownerId;
-      if (!map.has(o)) map.set(o, { leadsNew: 0, dealsWon: 0 });
-      const m = map.get(o)!;
-      m.leadsNew += 1;
+    const discussionActivities = activities.filter((a) =>
+      ["phone_call", "whatsapp", "meeting"].includes(a.activityType)
+    );
+
+    const proposalsSentInRange = proposals.filter((p) => {
+      if (p.status !== "sent" && p.status !== "accepted") return false;
+      const t = p.sentAt ?? p.updatedAt;
+      return inRange(t, start, end);
     });
-    dealsWonInRange.forEach((d) => {
-      const o = d.ownerId;
-      if (!map.has(o)) map.set(o, { leadsNew: 0, dealsWon: 0 });
-      map.get(o)!.dealsWon += 1;
+
+    const dealsWonInRange: Deal[] = [];
+    const bottleneckCounts = new Map<DealStage, number>();
+    CORPORATE_DEAL_STAGES.forEach((s) => bottleneckCounts.set(s, 0));
+
+    deals.forEach((d) => {
+      if (d.stage === "won" && inRange(d.updatedAt, start, end)) {
+        dealsWonInRange.push(d);
+      }
+      if (d.stage !== "won" && d.stage !== "lost") {
+        bottleneckCounts.set(d.stage, (bottleneckCounts.get(d.stage) ?? 0) + 1);
+      }
     });
-    const name = (id: string) => users.find((u) => u.id === id)?.name ?? id;
-    return [...map.entries()]
-      .map(([id, v]) => ({ id, name: name(id), ...v }))
+
+    let bestStage: DealStage | null = null;
+    let maxStageCount = 0;
+    bottleneckCounts.forEach((n, s) => {
+      if (n > maxStageCount) {
+        maxStageCount = n;
+        bestStage = s;
+      }
+    });
+
+    const tasksDoneInRange: Task[] = [];
+    const tasksOverdueOpen: Task[] = [];
+    const [y, m, d] = todayKey.split("-").map(Number);
+    const now = new Date(y, m - 1, d);
+
+    tasks.forEach((t) => {
+      if (t.status === "done" && inRange(t.completedAt, start, end)) {
+        tasksDoneInRange.push(t);
+      }
+      if (t.status === "open" && t.dueDate && t.dueDate < now) {
+        tasksOverdueOpen.push(t);
+      }
+    });
+
+    const bySource = LEAD_SOURCES.map((s) => ({
+      key: s,
+      name: LABELS.source[s],
+      count: sourceCounts[s] ?? 0,
+    }));
+
+    // Owner stats optimization: Pre-map users for O(1) lookup
+    const userMap = new Map(users.map((u) => [u.id, u.name]));
+    const ownerMap = new Map<string, { leadsNew: number; dealsWon: number }>();
+
+    if (isAdmin) {
+      leadsInRange.forEach((l) => {
+        const o = l.ownerId;
+        if (!ownerMap.has(o)) ownerMap.set(o, { leadsNew: 0, dealsWon: 0 });
+        ownerMap.get(o)!.leadsNew += 1;
+      });
+      dealsWonInRange.forEach((d) => {
+        const o = d.ownerId;
+        if (!ownerMap.has(o)) ownerMap.set(o, { leadsNew: 0, dealsWon: 0 });
+        ownerMap.get(o)!.dealsWon += 1;
+      });
+    }
+
+    const ownerStats = [...ownerMap.entries()]
+      .map(([id, v]) => ({ id, name: userMap.get(id) ?? id, ...v }))
       .sort((a, b) => b.leadsNew + b.dealsWon - (a.leadsNew + a.dealsWon));
-  }, [isAdmin, leadsInRange, dealsWonInRange, users]);
 
-  const conversionBySource = useMemo(() => {
-    const rows: { source: string; total: number; enrolled: number; pct: number }[] =
-      [];
-    LEAD_SOURCES.forEach((s) => {
-      const subset = leads.filter((l) => l.source === s);
-      const total = subset.length;
-      const en = subset.filter((l) => l.educationStage === "enrolled").length;
-      rows.push({
+    return {
+      leadsInRange,
+      enrolledInRange,
+      enrollmentsInRange,
+      discussionActivities,
+      proposalsSentInRange,
+      dealsWonInRange,
+      pipelineBottleneck:
+        bestStage && maxStageCount > 0
+          ? { stage: bestStage, count: maxStageCount }
+          : null,
+      tasksDoneInRange,
+      tasksOverdueOpen,
+      bySource,
+      ownerStats,
+    };
+  }, [
+    leads,
+    deals,
+    tasks,
+    proposals,
+    enrollments,
+    activities,
+    range.start,
+    range.end,
+    users,
+    isAdmin,
+    todayKey,
+  ]);
+
+  const {
+    leadsInRange,
+    enrolledInRange,
+    enrollmentsInRange,
+    discussionActivities,
+    proposalsSentInRange,
+    dealsWonInRange,
+    pipelineBottleneck,
+    tasksDoneInRange,
+    tasksOverdueOpen,
+    bySource,
+    ownerStats,
+  } = statsInRange;
+
+  const globalStats = useMemo(() => {
+    const totalLeadsAll = leads.length;
+    let enrolledAll = 0;
+
+    const sourceMap = new Map<string, { total: number; enrolled: number }>();
+    LEAD_SOURCES.forEach((s) => sourceMap.set(s, { total: 0, enrolled: 0 }));
+
+    leads.forEach((l) => {
+      const isEnrolled = l.educationStage === "enrolled";
+      if (isEnrolled) enrolledAll++;
+
+      const counts = sourceMap.get(l.source);
+      if (counts) {
+        counts.total++;
+        if (isEnrolled) counts.enrolled++;
+      }
+    });
+
+    const conversionBySource = LEAD_SOURCES.map((s) => {
+      const { total, enrolled } = sourceMap.get(s)!;
+      return {
         source: LABELS.source[s],
         total,
-        enrolled: en,
-        pct: total ? Math.round((en / total) * 100) : 0,
-      });
-    });
-    return rows.filter((r) => r.total > 0).sort((a, b) => b.pct - a.pct);
+        enrolled,
+        pct: total ? Math.round((enrolled / total) * 100) : 0,
+      };
+    })
+      .filter((r) => r.total > 0)
+      .sort((a, b) => b.pct - a.pct);
+
+    const conversionAll = totalLeadsAll
+      ? Math.round((enrolledAll / totalLeadsAll) * 100)
+      : 0;
+
+    return {
+      totalLeadsAll,
+      enrolledAll,
+      conversionAll,
+      conversionBySource,
+    };
   }, [leads]);
+
+  const { totalLeadsAll, enrolledAll, conversionAll, conversionBySource } =
+    globalStats;
 
   const csvRowCount = useMemo(() => {
     return 12 + leadsInRange.length;
   }, [leadsInRange.length]);
 
-  function exportCsv() {
+  const exportCsv = useCallback(() => {
     const rows: string[][] = [
       ["Rapor", "GOS"],
       ["Aralık başı", range.start.toISOString()],
@@ -344,13 +398,16 @@ export function ReportsPageClient() {
       `gos-rapor-${range.start.toISOString().slice(0, 10)}.csv`,
       rows
     );
-  }
-
-  const totalLeadsAll = leads.length;
-  const enrolledAll = leads.filter((l) => l.educationStage === "enrolled").length;
-  const conversionAll = totalLeadsAll
-    ? Math.round((enrolledAll / totalLeadsAll) * 100)
-    : 0;
+  }, [
+    range.start,
+    range.end,
+    leadsInRange,
+    discussionActivities,
+    enrollmentsInRange,
+    proposalsSentInRange,
+    dealsWonInRange,
+    tasksDoneInRange,
+  ]);
 
   return (
     <div className="space-y-6">
