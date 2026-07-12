@@ -1,0 +1,3 @@
+## 2025-05-15 - Date-dependent useMemo stabilization
+**Learning:** Using `new Date()` or functions that return fresh Date objects (like `startOfDay(new Date())`) directly in a component body and then using them as `useMemo` dependencies causes the memoization to fail on every render, as the dependency reference is never stable.
+**Action:** Use a `todayKey` string (e.g., `format(new Date(), 'yyyy-MM-dd')`) as the `useMemo` dependency. Reconstruct the required Date objects inside the `useMemo` block from this stable key. This ensures memoization persists within the same calendar day while allowing for a refresh when the day changes.
