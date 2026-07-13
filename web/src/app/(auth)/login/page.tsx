@@ -143,7 +143,11 @@ export default function LoginPage() {
                       required
                     />
                   </div>
-                  <Button type="submit" className="w-full" disabled={busy || loading}>
+                  <Button
+                    type="submit"
+                    className="w-full"
+                    loading={busy || loading}
+                  >
                     Giriş yap
                   </Button>
                   <Button
@@ -190,7 +194,11 @@ export default function LoginPage() {
                       minLength={6}
                     />
                   </div>
-                  <Button type="submit" className="w-full" disabled={busy || loading}>
+                  <Button
+                    type="submit"
+                    className="w-full"
+                    loading={busy || loading}
+                  >
                     Hesap oluştur
                   </Button>
                   <p className="text-center text-xs text-muted-foreground">
