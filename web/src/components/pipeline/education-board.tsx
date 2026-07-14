@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   DndContext,
   type DragEndEvent,
@@ -62,7 +62,13 @@ function StageColumn({
   );
 }
 
-function LeadCard({ lead, ownerLabel }: { lead: Lead; ownerLabel: string }) {
+const LeadCard = React.memo(function LeadCard({
+  lead,
+  ownerLabel,
+}: {
+  lead: Lead;
+  ownerLabel: string;
+}) {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({ id: lead.id });
 
@@ -113,7 +119,7 @@ function LeadCard({ lead, ownerLabel }: { lead: Lead; ownerLabel: string }) {
       </Card>
     </div>
   );
-}
+});
 
 export function EducationBoard() {
   const { firebaseUser, profile } = useAuth();

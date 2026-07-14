@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   DndContext,
   type DragEndEvent,
@@ -64,7 +64,7 @@ function StageColumn({
   );
 }
 
-function DealCard({
+const DealCard = React.memo(function DealCard({
   deal,
   ownerLabel,
   showProposalLink,
@@ -122,7 +122,7 @@ function DealCard({
       </Card>
     </div>
   );
-}
+});
 
 export function CorporateBoard() {
   const { firebaseUser, profile } = useAuth();
