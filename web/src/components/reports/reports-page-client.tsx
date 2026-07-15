@@ -141,6 +141,7 @@ export function ReportsPageClient() {
   }, [uid, isAdmin]);
 
   const dealIds = useMemo(() => deals.map((d) => d.id), [deals]);
+  const dealIdsKey = dealIds.join(",");
 
   useEffect(() => {
     if (!uid || !showCorporate) return;
@@ -150,7 +151,8 @@ export function ReportsPageClient() {
       { isAdmin, dealIds },
       setProposals
     );
-  }, [uid, isAdmin, showCorporate, dealIds.join(",")]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [uid, isAdmin, showCorporate, dealIdsKey]);
 
   useEffect(() => {
     if (!uid || !showEnrollmentsBlock) return;
@@ -169,69 +171,73 @@ export function ReportsPageClient() {
     );
   }, [uid, range.start, range.end]);
 
-  const leadsInRange = useMemo(
-    () => leads.filter((l) => inRange(l.createdAt, range.start, range.end)),
-    [leads, range.start, range.end]
-  );
-
-  const bySource = useMemo(() => {
-    const counts: Record<string, number> = {};
+  const statsInRange = useMemo(() => {
+    // Optimization: Consolidate multiple O(N) passes into single-pass collections
+    const leadsInRange: Lead[] = [];
+    const enrolledInRange: Lead[] = [];
+    const countsBySource: Record<string, number> = {};
     LEAD_SOURCES.forEach((s) => {
-      counts[s] = 0;
+      countsBySource[s] = 0;
     });
-    leadsInRange.forEach((l) => {
-      counts[l.source] = (counts[l.source] ?? 0) + 1;
+
+    leads.forEach((l) => {
+      if (inRange(l.createdAt, range.start, range.end)) {
+        leadsInRange.push(l);
+        countsBySource[l.source] = (countsBySource[l.source] ?? 0) + 1;
+      }
+      if (
+        l.educationStage === "enrolled" &&
+        inRange(l.updatedAt, range.start, range.end)
+      ) {
+        enrolledInRange.push(l);
+      }
     });
-    return LEAD_SOURCES.map((s) => ({
+
+    const enrollmentsInRange = enrollments.filter((e) =>
+      inRange(e.createdAt, range.start, range.end)
+    );
+
+    const discussionActivities = activities.filter((a) =>
+      ["phone_call", "whatsapp", "meeting"].includes(a.activityType)
+    );
+
+    const proposalsSentInRange = proposals.filter((p) => {
+      if (p.status !== "sent" && p.status !== "accepted") return false;
+      const t = p.sentAt ?? p.updatedAt;
+      return inRange(t, range.start, range.end);
+    });
+
+    const dealsWonInRange = deals.filter(
+      (d) => d.stage === "won" && inRange(d.updatedAt, range.start, range.end)
+    );
+
+    const tasksDoneInRange = tasks.filter(
+      (t) => t.status === "done" && inRange(t.completedAt, range.start, range.end)
+    );
+
+    const now = new Date();
+    const tasksOverdueOpen = tasks.filter(
+      (t) => t.status === "open" && t.dueDate && t.dueDate < now
+    );
+
+    const bySource = LEAD_SOURCES.map((s) => ({
       key: s,
       name: LABELS.source[s],
-      count: counts[s] ?? 0,
+      count: countsBySource[s] ?? 0,
     }));
-  }, [leadsInRange]);
 
-  const enrolledInRange = useMemo(
-    () =>
-      leads.filter(
-        (l) =>
-          l.educationStage === "enrolled" &&
-          inRange(l.updatedAt, range.start, range.end)
-      ),
-    [leads, range.start, range.end]
-  );
-
-  const enrollmentsInRange = useMemo(
-    () =>
-      enrollments.filter((e) =>
-        inRange(e.createdAt, range.start, range.end)
-      ),
-    [enrollments, range.start, range.end]
-  );
-
-  const discussionActivities = useMemo(
-    () =>
-      activities.filter((a) =>
-        ["phone_call", "whatsapp", "meeting"].includes(a.activityType)
-      ),
-    [activities]
-  );
-
-  const proposalsSentInRange = useMemo(
-    () =>
-      proposals.filter((p) => {
-        if (p.status !== "sent" && p.status !== "accepted") return false;
-        const t = p.sentAt ?? p.updatedAt;
-        return inRange(t, range.start, range.end);
-      }),
-    [proposals, range.start, range.end]
-  );
-
-  const dealsWonInRange = useMemo(
-    () =>
-      deals.filter(
-        (d) => d.stage === "won" && inRange(d.updatedAt, range.start, range.end)
-      ),
-    [deals, range.start, range.end]
-  );
+    return {
+      leadsInRange,
+      enrolledInRange,
+      enrollmentsInRange,
+      discussionActivities,
+      proposalsSentInRange,
+      dealsWonInRange,
+      tasksDoneInRange,
+      tasksOverdueOpen,
+      bySource,
+    };
+  }, [leads, enrollments, activities, proposals, deals, tasks, range.start, range.end]);
 
   const pipelineBottleneck = useMemo(() => {
     const counts = new Map<DealStage, number>();
@@ -248,30 +254,8 @@ export function ReportsPageClient() {
         best = s;
       }
     });
-    return best && max > 0
-      ? { stage: best, count: max }
-      : null;
+    return best && max > 0 ? { stage: best, count: max } : null;
   }, [deals]);
-
-  const tasksDoneInRange = useMemo(
-    () =>
-      tasks.filter(
-        (t) =>
-          t.status === "done" &&
-          inRange(t.completedAt, range.start, range.end)
-      ),
-    [tasks, range.start, range.end]
-  );
-
-  const tasksOverdueOpen = useMemo(() => {
-    const now = new Date();
-    return tasks.filter(
-      (t) =>
-        t.status === "open" &&
-        t.dueDate &&
-        t.dueDate < now
-    );
-  }, [tasks]);
 
   const ownerStats = useMemo(() => {
     if (!isAdmin) return [];
@@ -279,43 +263,59 @@ export function ReportsPageClient() {
       string,
       { leadsNew: number; dealsWon: number }
     >();
-    leadsInRange.forEach((l) => {
+
+    // O(L+D) pass to aggregate stats by owner
+    statsInRange.leadsInRange.forEach((l) => {
       const o = l.ownerId;
       if (!map.has(o)) map.set(o, { leadsNew: 0, dealsWon: 0 });
       const m = map.get(o)!;
       m.leadsNew += 1;
     });
-    dealsWonInRange.forEach((d) => {
+    statsInRange.dealsWonInRange.forEach((d) => {
       const o = d.ownerId;
       if (!map.has(o)) map.set(o, { leadsNew: 0, dealsWon: 0 });
       map.get(o)!.dealsWon += 1;
     });
-    const name = (id: string) => users.find((u) => u.id === id)?.name ?? id;
+
+    // O(U) pass to create a name lookup map
+    const userNames = new Map(users.map((u) => [u.id, u.name]));
+
     return [...map.entries()]
-      .map(([id, v]) => ({ id, name: name(id), ...v }))
+      .map(([id, v]) => ({
+        id,
+        name: userNames.get(id) ?? id,
+        ...v,
+      }))
       .sort((a, b) => b.leadsNew + b.dealsWon - (a.leadsNew + a.dealsWon));
-  }, [isAdmin, leadsInRange, dealsWonInRange, users]);
+  }, [isAdmin, statsInRange.leadsInRange, statsInRange.dealsWonInRange, users]);
 
   const conversionBySource = useMemo(() => {
-    const rows: { source: string; total: number; enrolled: number; pct: number }[] =
-      [];
-    LEAD_SOURCES.forEach((s) => {
-      const subset = leads.filter((l) => l.source === s);
-      const total = subset.length;
-      const en = subset.filter((l) => l.educationStage === "enrolled").length;
-      rows.push({
-        source: LABELS.source[s],
-        total,
-        enrolled: en,
-        pct: total ? Math.round((en / total) * 100) : 0,
-      });
+    // Optimization: Single pass O(L) instead of O(Sources * L)
+    const counts = new Map<string, { total: number; enrolled: number }>();
+
+    leads.forEach((l) => {
+      const stats = counts.get(l.source) || { total: 0, enrolled: 0 };
+      stats.total++;
+      if (l.educationStage === "enrolled") {
+        stats.enrolled++;
+      }
+      counts.set(l.source, stats);
     });
-    return rows.filter((r) => r.total > 0).sort((a, b) => b.pct - a.pct);
+
+    return Array.from(counts.entries())
+      .map(([source, stats]) => ({
+        source: LABELS.source[source as keyof typeof LABELS.source] || source,
+        total: stats.total,
+        enrolled: stats.enrolled,
+        pct: stats.total ? Math.round((stats.enrolled / stats.total) * 100) : 0,
+      }))
+      .filter((r) => r.total > 0)
+      .sort((a, b) => b.pct - a.pct);
   }, [leads]);
 
   const csvRowCount = useMemo(() => {
-    return 12 + leadsInRange.length;
-  }, [leadsInRange.length]);
+    return 12 + statsInRange.leadsInRange.length;
+  }, [statsInRange.leadsInRange.length]);
 
   function exportCsv() {
     const rows: string[][] = [
@@ -324,15 +324,15 @@ export function ReportsPageClient() {
       ["Aralık sonu", range.end.toISOString()],
       [],
       ["Metrik", "Değer"],
-      ["Yeni lead (aralık)", String(leadsInRange.length)],
-      ["Görüşme/tel/WA aktivitesi", String(discussionActivities.length)],
-      ["Yeni program kaydı (enrollment)", String(enrollmentsInRange.length)],
-      ["Teklif (gönderildi/kabul)", String(proposalsSentInRange.length)],
-      ["Kazanılan fırsat", String(dealsWonInRange.length)],
-      ["Tamamlanan görev", String(tasksDoneInRange.length)],
+      ["Yeni lead (aralık)", String(statsInRange.leadsInRange.length)],
+      ["Görüşme/tel/WA aktivitesi", String(statsInRange.discussionActivities.length)],
+      ["Yeni program kaydı (enrollment)", String(statsInRange.enrollmentsInRange.length)],
+      ["Teklif (gönderildi/kabul)", String(statsInRange.proposalsSentInRange.length)],
+      ["Kazanılan fırsat", String(statsInRange.dealsWonInRange.length)],
+      ["Tamamlanan görev", String(statsInRange.tasksDoneInRange.length)],
       [],
       ["Lead id", "Ad", "Sahip id", "Kaynak", "Eğitim aşaması"],
-      ...leadsInRange.map((l) => [
+      ...statsInRange.leadsInRange.map((l) => [
         l.id,
         l.name,
         l.ownerId,
@@ -346,11 +346,14 @@ export function ReportsPageClient() {
     );
   }
 
-  const totalLeadsAll = leads.length;
-  const enrolledAll = leads.filter((l) => l.educationStage === "enrolled").length;
-  const conversionAll = totalLeadsAll
-    ? Math.round((enrolledAll / totalLeadsAll) * 100)
-    : 0;
+  const globalStats = useMemo(() => {
+    const totalLeadsAll = leads.length;
+    const enrolledAll = leads.filter((l) => l.educationStage === "enrolled").length;
+    const conversionAll = totalLeadsAll
+      ? Math.round((enrolledAll / totalLeadsAll) * 100)
+      : 0;
+    return { totalLeadsAll, enrolledAll, conversionAll };
+  }, [leads]);
 
   return (
     <div className="space-y-6">
@@ -419,7 +422,7 @@ export function ReportsPageClient() {
             </CardTitle>
           </CardHeader>
           <CardContent className="text-3xl font-semibold">
-            {leadsInRange.length}
+            {statsInRange.leadsInRange.length}
           </CardContent>
         </Card>
         <Card>
@@ -429,7 +432,7 @@ export function ReportsPageClient() {
             </CardTitle>
           </CardHeader>
           <CardContent className="text-3xl font-semibold">
-            {discussionActivities.length}
+            {statsInRange.discussionActivities.length}
           </CardContent>
         </Card>
         <Card>
@@ -439,7 +442,7 @@ export function ReportsPageClient() {
             </CardTitle>
           </CardHeader>
           <CardContent className="text-3xl font-semibold">
-            {enrollmentsInRange.length}
+            {statsInRange.enrollmentsInRange.length}
           </CardContent>
         </Card>
         <Card>
@@ -449,7 +452,7 @@ export function ReportsPageClient() {
             </CardTitle>
           </CardHeader>
           <CardContent className="text-3xl font-semibold">
-            {enrolledInRange.length}
+            {statsInRange.enrolledInRange.length}
           </CardContent>
         </Card>
       </div>
@@ -463,7 +466,7 @@ export function ReportsPageClient() {
               </CardTitle>
             </CardHeader>
             <CardContent className="text-3xl font-semibold">
-              {proposalsSentInRange.length}
+              {statsInRange.proposalsSentInRange.length}
             </CardContent>
           </Card>
           <Card>
@@ -473,7 +476,7 @@ export function ReportsPageClient() {
               </CardTitle>
             </CardHeader>
             <CardContent className="text-3xl font-semibold">
-              {dealsWonInRange.length}
+              {statsInRange.dealsWonInRange.length}
             </CardContent>
           </Card>
           <Card>
@@ -505,7 +508,9 @@ export function ReportsPageClient() {
               Toplam lead (tümü)
             </CardTitle>
           </CardHeader>
-          <CardContent className="text-3xl font-semibold">{totalLeadsAll}</CardContent>
+          <CardContent className="text-3xl font-semibold">
+            {globalStats.totalLeadsAll}
+          </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
@@ -513,7 +518,9 @@ export function ReportsPageClient() {
               Kayıt olan (eğitim, tümü)
             </CardTitle>
           </CardHeader>
-          <CardContent className="text-3xl font-semibold">{enrolledAll}</CardContent>
+          <CardContent className="text-3xl font-semibold">
+            {globalStats.enrolledAll}
+          </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
@@ -521,7 +528,9 @@ export function ReportsPageClient() {
               Dönüşüm (genel)
             </CardTitle>
           </CardHeader>
-          <CardContent className="text-3xl font-semibold">%{conversionAll}</CardContent>
+          <CardContent className="text-3xl font-semibold">
+            %{globalStats.conversionAll}
+          </CardContent>
         </Card>
       </div>
 
@@ -533,7 +542,7 @@ export function ReportsPageClient() {
             </CardTitle>
           </CardHeader>
           <CardContent className="text-3xl font-semibold">
-            {tasksDoneInRange.length}
+            {statsInRange.tasksDoneInRange.length}
           </CardContent>
         </Card>
         <Card>
@@ -543,7 +552,7 @@ export function ReportsPageClient() {
             </CardTitle>
           </CardHeader>
           <CardContent className="text-3xl font-semibold text-destructive">
-            {tasksOverdueOpen.length}
+            {statsInRange.tasksOverdueOpen.length}
           </CardContent>
         </Card>
       </div>
@@ -626,7 +635,10 @@ export function ReportsPageClient() {
         </CardHeader>
         <CardContent className="h-80 w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={bySource} margin={{ left: 8, right: 8, bottom: 8 }}>
+            <BarChart
+              data={statsInRange.bySource}
+              margin={{ left: 8, right: 8, bottom: 8 }}
+            >
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
               <XAxis
                 dataKey="name"
