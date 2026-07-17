@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, memo } from "react";
 import {
   DndContext,
   type DragEndEvent,
@@ -64,7 +64,10 @@ function StageColumn({
   );
 }
 
-function DealCard({
+// Memoize DealCard to prevent unnecessary re-renders of deal cards on board updates.
+// Each deal card can be costly to render recursively (avatar, links, badges), and memoizing
+// avoids re-renders when other columns or cards are updated.
+const DealCard = memo(function DealCard({
   deal,
   ownerLabel,
   showProposalLink,
@@ -122,7 +125,7 @@ function DealCard({
       </Card>
     </div>
   );
-}
+});
 
 export function CorporateBoard() {
   const { firebaseUser, profile } = useAuth();
