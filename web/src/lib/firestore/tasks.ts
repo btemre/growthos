@@ -37,6 +37,52 @@ export function subscribeTasksForUser(
   );
 }
 
+/**
+ * ⚡ Bolt: Subscribes to tasks related to a specific entity (e.g. Lead, Deal, Company).
+ * Performs server-side filtering to avoid downloading unrelated tasks over the network.
+ */
+export function subscribeTasksForRelated(
+  db: Firestore,
+  uid: string,
+  isAdmin: boolean,
+  relatedType: Task["relatedType"],
+  relatedId: string,
+  onData: (tasks: Task[]) => void,
+  onError?: (e: Error) => void
+): Unsubscribe {
+  const col = collection(db, "tasks");
+
+  // Non-admin queries must include `assignedTo == uid` to comply with Firestore security rules.
+  // Using multiple equality filters doesn't require composite index generation in Firestore.
+  const q = isAdmin
+    ? query(
+        col,
+        where("relatedType", "==", relatedType),
+        where("relatedId", "==", relatedId)
+      )
+    : query(
+        col,
+        where("relatedType", "==", relatedType),
+        where("relatedId", "==", relatedId),
+        where("assignedTo", "==", uid)
+      );
+
+  return onSnapshot(
+    q,
+    (snap) => {
+      const tasks = snap.docs.map((d) => taskFromDoc(d.id, d.data()));
+      // Sort client-side to avoid needing complex composite indexes
+      tasks.sort((a, b) => {
+        const timeA = a.createdAt ? a.createdAt.getTime() : 0;
+        const timeB = b.createdAt ? b.createdAt.getTime() : 0;
+        return timeB - timeA;
+      });
+      onData(tasks);
+    },
+    (err) => onError?.(err as Error)
+  );
+}
+
 export async function createTask(
   db: Firestore,
   input: {
