@@ -9,6 +9,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Loader2Icon } from "lucide-react";
 
 export function ConfirmDialog({
   open,
@@ -54,7 +55,9 @@ export function ConfirmDialog({
             variant={variant === "destructive" ? "destructive" : "default"}
             disabled={busy}
             onClick={() => void onConfirm()}
+            className="gap-1.5"
           >
+            {busy && <Loader2Icon className="size-4 animate-spin" />}
             {confirmLabel}
           </Button>
         </DialogFooter>
