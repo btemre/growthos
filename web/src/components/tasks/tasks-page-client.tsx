@@ -229,12 +229,12 @@ export function TasksPageClient() {
                     ) : null}
                   </div>
                   <div className="space-y-2">
-                    <Label>Bağlı lead</Label>
+                    <Label htmlFor="task-lead">Bağlı lead</Label>
                     <Select
                       value={leadId}
                       onValueChange={(v) => setValue("leadId", v ?? "")}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger id="task-lead">
                         <SelectValue placeholder="Lead seçin" />
                       </SelectTrigger>
                       <SelectContent>
@@ -250,18 +250,18 @@ export function TasksPageClient() {
                     ) : null}
                   </div>
                   <div className="space-y-2">
-                    <Label>Bitiş</Label>
-                    <Input type="datetime-local" {...register("dueDate")} />
+                    <Label htmlFor="task-due-date">Bitiş</Label>
+                    <Input id="task-due-date" type="datetime-local" {...register("dueDate")} />
                   </div>
                   <div className="space-y-2">
-                    <Label>Öncelik</Label>
+                    <Label htmlFor="task-priority">Öncelik</Label>
                     <Select
                       value={watch("priority")}
                       onValueChange={(v) =>
                         setValue("priority", (v as "low" | "medium" | "high") ?? "medium")
                       }
                     >
-                      <SelectTrigger>
+                      <SelectTrigger id="task-priority">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
