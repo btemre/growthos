@@ -37,6 +37,39 @@ export function subscribeTasksForUser(
   );
 }
 
+/**
+ * Server-side subscription for tasks related to a specific entity (e.g., lead, deal, company).
+ * This optimizes database reads and reduces bandwidth significantly by querying only matching documents.
+ */
+export function subscribeTasksForRelated(
+  db: Firestore,
+  relatedType: "lead" | "deal" | "company",
+  relatedId: string,
+  onData: (tasks: Task[]) => void,
+  onError?: (e: Error) => void
+): Unsubscribe {
+  const q = query(
+    collection(db, "tasks"),
+    where("relatedType", "==", relatedType),
+    where("relatedId", "==", relatedId)
+  );
+
+  return onSnapshot(
+    q,
+    (snap) => {
+      // Sort tasks by createdAt desc client-side to avoid needing custom multi-field Firestore indexes
+      const tasks = snap.docs.map((d) => taskFromDoc(d.id, d.data()));
+      tasks.sort((a, b) => {
+        const timeA = a.createdAt?.getTime() ?? 0;
+        const timeB = b.createdAt?.getTime() ?? 0;
+        return timeB - timeA;
+      });
+      onData(tasks);
+    },
+    (err) => onError?.(err as Error)
+  );
+}
+
 export async function createTask(
   db: Firestore,
   input: {
