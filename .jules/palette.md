@@ -1,0 +1,3 @@
+## 2025-07-21 - [Select programmatic associations]
+**Learning:** In design systems using custom or headless components (like `@base-ui/react` in this project), `<Label>` elements may lack direct integration with trigger elements. Explicitly linking them using the standard `htmlFor` and `id` attributes ensures assistive technologies correctly announce the select option trigger and allow users to focus/interact with the field by clicking the label text.
+**Action:** When adding or auditing forms with headless dropdown trigger buttons (e.g., `<SelectTrigger>`), ensure that a unique `id` is assigned to the trigger, and a corresponding `htmlFor` is declared on its `<Label>`.
