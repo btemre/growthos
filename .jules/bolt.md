@@ -1,0 +1,3 @@
+## 2025-03-05 - [Firestore Compound Queries Without Index Overhead]
+**Learning:** Querying Firestore with multiple equality fields (e.g., `relatedType == 'lead'` and `relatedId == '...'`) does not require custom composite indexes. However, appending an `orderBy` clause triggers a strict composite index requirement. In detail components where document count per entity is small (e.g. tasks on a lead detail page), querying without `orderBy` and sorting on the client side (e.g. by `createdAt`) retains high O(1) fetch speed and avoids needing index modifications entirely.
+**Action:** Use client-side sorting when introducing targeted real-time subscriptions for related sub-entities in Firestore to keep queries fast and index-independent.
