@@ -61,9 +61,9 @@ export function SettingsPageClient() {
           <CardDescription>Açık, koyu veya sistem teması.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-2">
-          <Label>Tema</Label>
+          <Label htmlFor="theme-select">Tema</Label>
           <Select value={theme ?? "system"} onValueChange={(v) => v && setTheme(v)}>
-            <SelectTrigger className="max-w-xs">
+            <SelectTrigger id="theme-select" className="max-w-xs">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
