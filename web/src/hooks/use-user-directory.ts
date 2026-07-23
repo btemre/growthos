@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { getFirebaseDb } from "@/lib/firebase/client";
 import { listUsers } from "@/lib/firestore/users";
 
@@ -19,11 +19,16 @@ export function useUserDirectory(isAdmin: boolean) {
       .catch(() => setNames(new Map()));
   }, [isAdmin]);
 
-  function resolveOwner(ownerId: string, currentUid?: string): string {
-    if (currentUid && ownerId === currentUid) return "Siz";
-    if (isAdmin) return names.get(ownerId) ?? `${ownerId.slice(0, 8)}…`;
-    return `${ownerId.slice(0, 8)}…`;
-  }
+  // Memoize resolveOwner function to prevent recreations and avoid triggering child re-renders.
+  const resolveOwner = useCallback(
+    (ownerId: string, currentUid?: string): string => {
+      if (currentUid && ownerId === currentUid) return "Siz";
+      if (isAdmin) return names.get(ownerId) ?? `${ownerId.slice(0, 8)}…`;
+      return `${ownerId.slice(0, 8)}…`;
+    },
+    [names, isAdmin]
+  );
 
-  return { resolveOwner };
+  // Memoize the return object reference to prevent cascaded re-renders in list components that consume it.
+  return useMemo(() => ({ resolveOwner }), [resolveOwner]);
 }
