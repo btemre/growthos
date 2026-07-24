@@ -5,6 +5,7 @@ import { tr } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -54,21 +55,26 @@ export function LeadActivitiesTab({
               </Button>
             ))}
           </div>
-          <Select
-            value={activityType}
-            onValueChange={(v) => v && setActivityType(v as ActivityType)}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {ACTIVITY_TYPES.map((t) => (
-                <SelectItem key={t} value={t}>
-                  {LABELS.activityType[t]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="space-y-1.5">
+            <Label htmlFor="activity-type-select" className="text-xs font-medium">
+              Aktivite tipi
+            </Label>
+            <Select
+              value={activityType}
+              onValueChange={(v) => v && setActivityType(v as ActivityType)}
+            >
+              <SelectTrigger id="activity-type-select">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {ACTIVITY_TYPES.map((t) => (
+                  <SelectItem key={t} value={t}>
+                    {LABELS.activityType[t]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <Textarea
             rows={3}
             placeholder="Ne yapıldı?"

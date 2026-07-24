@@ -80,12 +80,14 @@ export function LeadAiPanel({
               {aiAction}
             </p>
             <div className="flex flex-wrap items-center gap-2">
-              <Label className="text-xs">Görev tipi</Label>
+              <Label htmlFor="ai-task-type-select" className="text-xs">
+                Görev tipi
+              </Label>
               <Select
                 value={aiTaskType}
                 onValueChange={(v) => v && setAiTaskType(coerceTaskType(v))}
               >
-                <SelectTrigger className="w-[200px]">
+                <SelectTrigger id="ai-task-type-select" className="w-[200px]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
