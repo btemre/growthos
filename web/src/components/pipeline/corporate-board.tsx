@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, memo } from "react";
 import {
   DndContext,
   type DragEndEvent,
@@ -64,7 +64,9 @@ function StageColumn({
   );
 }
 
-function DealCard({
+// Wrap DealCard in React.memo to prevent unnecessary re-renders of cards on the board.
+// When drag-and-drop operations trigger stage and card list updates, only the affected cards will re-render.
+const DealCard = memo(function DealCard({
   deal,
   ownerLabel,
   showProposalLink,
@@ -122,7 +124,7 @@ function DealCard({
       </Card>
     </div>
   );
-}
+});
 
 export function CorporateBoard() {
   const { firebaseUser, profile } = useAuth();
