@@ -133,9 +133,9 @@ export function GlobalRightRail() {
         </CardHeader>
         <CardContent className="space-y-3 text-xs">
           <div className="space-y-1.5">
-            <Label>Lead</Label>
+            <Label htmlFor="quick-lead-select">Lead</Label>
             <Select value={quickLeadId} onValueChange={(v) => setQuickLeadId(v ?? "")}>
-              <SelectTrigger>
+              <SelectTrigger id="quick-lead-select">
                 <SelectValue placeholder="Lead seçin" />
               </SelectTrigger>
               <SelectContent>
