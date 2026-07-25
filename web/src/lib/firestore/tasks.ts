@@ -37,6 +37,50 @@ export function subscribeTasksForUser(
   );
 }
 
+/**
+ * Subscribes to tasks related to a specific entity (lead, deal, company).
+ * Performs server-side filtering on relatedType and relatedId, and restricts to the current user's assigned tasks if they are not an admin.
+ * Sorts descending by createdAt on the client side to avoid requiring composite indexes.
+ */
+export function subscribeTasksForRelated(
+  db: Firestore,
+  uid: string,
+  isAdmin: boolean,
+  relatedType: "lead" | "deal" | "company",
+  relatedId: string,
+  onData: (tasks: Task[]) => void,
+  onError?: (e: Error) => void
+): Unsubscribe {
+  const col = collection(db, "tasks");
+  const q = isAdmin
+    ? query(
+        col,
+        where("relatedType", "==", relatedType),
+        where("relatedId", "==", relatedId)
+      )
+    : query(
+        col,
+        where("assignedTo", "==", uid),
+        where("relatedType", "==", relatedType),
+        where("relatedId", "==", relatedId)
+      );
+
+  return onSnapshot(
+    q,
+    (snap) => {
+      const tasks = snap.docs.map((d) => taskFromDoc(d.id, d.data()));
+      // Sort descending by createdAt on the client side
+      tasks.sort((a, b) => {
+        const timeA = a.createdAt?.getTime() ?? 0;
+        const timeB = b.createdAt?.getTime() ?? 0;
+        return timeB - timeA;
+      });
+      onData(tasks);
+    },
+    (err) => onError?.(err as Error)
+  );
+}
+
 export async function createTask(
   db: Firestore,
   input: {
