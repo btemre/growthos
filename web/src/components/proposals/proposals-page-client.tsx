@@ -61,6 +61,18 @@ export function ProposalsPageClient() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Proposal | null>(null);
   const [dealId, setDealId] = useState("");
+
+  // Keep dealId synchronized with preDealId during rendering to avoid synchronous useEffect state updates (cascading renders)
+  const [prevDeals, setPrevDeals] = useState<Deal[]>([]);
+  const [prevPreDealId, setPrevPreDealId] = useState("");
+  if (deals !== prevDeals || preDealId !== prevPreDealId) {
+    setPrevDeals(deals);
+    setPrevPreDealId(preDealId);
+    if (preDealId && deals.some((d) => d.id === preDealId)) {
+      setDealId(preDealId);
+    }
+  }
+
   const [title, setTitle] = useState("");
   const [scope, setScope] = useState("");
   const [price, setPrice] = useState("");
@@ -81,7 +93,11 @@ export function ProposalsPageClient() {
     return subscribeDealsForUser(db, uid, isAdmin, setDeals);
   }, [uid, isAdmin, allowed]);
 
-  const dealIds = useMemo(() => deals.map((d) => d.id), [deals]);
+  // Memoize both dealIds and its serialized string version in a single block for render efficiency
+  const { dealIds, dealIdsKey } = useMemo(() => {
+    const ids = deals.map((d) => d.id);
+    return { dealIds: ids, dealIdsKey: ids.join(",") };
+  }, [deals]);
 
   useEffect(() => {
     if (!uid || !allowed) return;
@@ -91,19 +107,14 @@ export function ProposalsPageClient() {
       { isAdmin, dealIds },
       setProposals
     );
-  }, [uid, isAdmin, allowed, dealIds.join(",")]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [uid, isAdmin, allowed, dealIdsKey]);
 
   const dealById = useMemo(() => {
     const m = new Map<string, Deal>();
     for (const d of deals) m.set(d.id, d);
     return m;
   }, [deals]);
-
-  useEffect(() => {
-    if (preDealId && deals.some((d) => d.id === preDealId)) {
-      setDealId(preDealId);
-    }
-  }, [preDealId, deals]);
 
   function openCreate() {
     setEditing(null);

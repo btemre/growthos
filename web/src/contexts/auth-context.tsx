@@ -50,6 +50,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<AppUser | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
 
+  // Keep authLoading in sync with bootstrapState when transitioning states during render
+  const [prevBootstrapState, setPrevBootstrapState] = useState<BootstrapState>(initialBootstrap);
+  if (bootstrapState !== prevBootstrapState) {
+    setPrevBootstrapState(bootstrapState);
+    setAuthLoading(bootstrapState === "ready");
+  }
+
   const needsFirebaseConfig = bootstrapState === "missing";
 
   const refreshProfile = useCallback(async () => {
@@ -64,7 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (isFirebaseConfigured()) {
-      setBootstrapState("ready");
+      // Already configured on mount, nothing to bootstrap inside effect
       return;
     }
 
@@ -98,11 +105,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (bootstrapState !== "ready") {
-      setAuthLoading(false);
       return;
     }
 
-    setAuthLoading(true);
     const auth = getFirebaseAuth();
     const db = getFirebaseDb();
 

@@ -140,7 +140,11 @@ export function ReportsPageClient() {
     };
   }, [uid, isAdmin]);
 
-  const dealIds = useMemo(() => deals.map((d) => d.id), [deals]);
+  // Memoize both dealIds and its serialized string version in a single block for render efficiency
+  const { dealIds, dealIdsKey } = useMemo(() => {
+    const ids = deals.map((d) => d.id);
+    return { dealIds: ids, dealIdsKey: ids.join(",") };
+  }, [deals]);
 
   useEffect(() => {
     if (!uid || !showCorporate) return;
@@ -150,7 +154,8 @@ export function ReportsPageClient() {
       { isAdmin, dealIds },
       setProposals
     );
-  }, [uid, isAdmin, showCorporate, dealIds.join(",")]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [uid, isAdmin, showCorporate, dealIdsKey]);
 
   useEffect(() => {
     if (!uid || !showEnrollmentsBlock) return;
