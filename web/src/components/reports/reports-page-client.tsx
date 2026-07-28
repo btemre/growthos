@@ -140,17 +140,19 @@ export function ReportsPageClient() {
     };
   }, [uid, isAdmin]);
 
-  const dealIds = useMemo(() => deals.map((d) => d.id), [deals]);
+  // Use a string-serialized key to satisfy ESLint and prevent redundant subscription re-evaluations
+  const dealIdsKey = useMemo(() => deals.map((d) => d.id).join(","), [deals]);
 
   useEffect(() => {
     if (!uid || !showCorporate) return;
     const db = getFirebaseDb();
+    const dealIds = dealIdsKey ? dealIdsKey.split(",") : [];
     return subscribeProposals(
       db,
       { isAdmin, dealIds },
       setProposals
     );
-  }, [uid, isAdmin, showCorporate, dealIds.join(",")]);
+  }, [uid, isAdmin, showCorporate, dealIdsKey]);
 
   useEffect(() => {
     if (!uid || !showEnrollmentsBlock) return;

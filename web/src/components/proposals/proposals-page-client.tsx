@@ -71,6 +71,22 @@ export function ProposalsPageClient() {
   const [optionalModules, setOptionalModules] = useState("");
   const [busy, setBusy] = useState(false);
 
+  // Sync state during render to avoid cascading renders and ESLint warnings
+  const [prevPreDealId, setPrevPreDealId] = useState<string>(preDealId);
+  const [prevDealsCount, setPrevDealsCount] = useState<number>(0);
+
+  if (preDealId !== prevPreDealId || deals.length !== prevDealsCount) {
+    setPrevPreDealId(preDealId);
+    setPrevDealsCount(deals.length);
+    if (
+      preDealId &&
+      deals.some((d) => d.id === preDealId) &&
+      dealId !== preDealId
+    ) {
+      setDealId(preDealId);
+    }
+  }
+
   const uid = firebaseUser?.uid ?? "";
   const isAdmin = profile?.role === "admin";
   const allowed = canUseProposals(profile?.role);
@@ -81,29 +97,25 @@ export function ProposalsPageClient() {
     return subscribeDealsForUser(db, uid, isAdmin, setDeals);
   }, [uid, isAdmin, allowed]);
 
-  const dealIds = useMemo(() => deals.map((d) => d.id), [deals]);
+  // Use a string-serialized key to satisfy ESLint and prevent redundant subscription re-evaluations
+  const dealIdsKey = useMemo(() => deals.map((d) => d.id).join(","), [deals]);
 
   useEffect(() => {
     if (!uid || !allowed) return;
     const db = getFirebaseDb();
+    const dealIds = dealIdsKey ? dealIdsKey.split(",") : [];
     return subscribeProposals(
       db,
       { isAdmin, dealIds },
       setProposals
     );
-  }, [uid, isAdmin, allowed, dealIds.join(",")]);
+  }, [uid, isAdmin, allowed, dealIdsKey]);
 
   const dealById = useMemo(() => {
     const m = new Map<string, Deal>();
     for (const d of deals) m.set(d.id, d);
     return m;
   }, [deals]);
-
-  useEffect(() => {
-    if (preDealId && deals.some((d) => d.id === preDealId)) {
-      setDealId(preDealId);
-    }
-  }, [preDealId, deals]);
 
   function openCreate() {
     setEditing(null);
