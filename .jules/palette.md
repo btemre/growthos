@@ -1,0 +1,3 @@
+## 2025-02-23 - Calendar Day Button Accessibility & Keyboard Focus States
+**Learning:** Adding semantic ARIA attributes (`aria-pressed`, detailed dynamic `aria-label`s) to custom visual grid elements (like calendar days) is vital for screen-reader users. However, we must never apply `focus-visible:outline-none` without preserving or enhancing high-contrast focus rings (`focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2`), so keyboard-only tabbing users do not lose their focus indicator on already-selected items.
+**Action:** Always combine custom screen-reader-only labels with visible, high-contrast focus rings when styling interactive custom grid buttons, and avoid hiding visual outline-focus states entirely.
