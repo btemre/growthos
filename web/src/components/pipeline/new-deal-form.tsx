@@ -83,12 +83,12 @@ function DealFormFields({
         ) : null}
       </div>
       <div className="space-y-2">
-        <Label>Hizmet türü</Label>
+        <Label htmlFor="deal-service-type">Hizmet türü</Label>
         <Select
           value={serviceType}
           onValueChange={(v) => v && setValue("serviceType", v as ServiceType)}
         >
-          <SelectTrigger>
+          <SelectTrigger id="deal-service-type">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>

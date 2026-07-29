@@ -1,0 +1,3 @@
+## 2025-03-05 - Custom Select Component Screen Reader Associations
+**Learning:** Custom Radix/Shadcn Select components do not automatically associate `<Label>` components with the `<SelectTrigger>` button unless explicitly linked via `htmlFor` on the label and a matching `id` attribute on the trigger. This pattern must be manually applied across all custom dropdown forms to support high-quality screen reader accessibility (a11y).
+**Action:** When implementing any dropdown forms using Radix UI or Shadcn Select components, always programmatically associate the `<Label>` and `<SelectTrigger>` by defining unique matching `htmlFor` and `id` attributes.
