@@ -141,6 +141,7 @@ export function ReportsPageClient() {
   }, [uid, isAdmin]);
 
   const dealIds = useMemo(() => deals.map((d) => d.id), [deals]);
+  const dealIdsKey = useMemo(() => dealIds.join(","), [dealIds]);
 
   useEffect(() => {
     if (!uid || !showCorporate) return;
@@ -150,7 +151,8 @@ export function ReportsPageClient() {
       { isAdmin, dealIds },
       setProposals
     );
-  }, [uid, isAdmin, showCorporate, dealIds.join(",")]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [uid, isAdmin, showCorporate, dealIdsKey]);
 
   useEffect(() => {
     if (!uid || !showEnrollmentsBlock) return;
