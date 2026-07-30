@@ -64,7 +64,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (isFirebaseConfigured()) {
-      setBootstrapState("ready");
+      // Already set to "ready" by default via initialBootstrap, so do nothing to avoid redundant state updates.
       return;
     }
 
@@ -98,11 +98,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (bootstrapState !== "ready") {
-      setAuthLoading(false);
+      Promise.resolve().then(() => {
+        setAuthLoading(false);
+      });
       return;
     }
 
-    setAuthLoading(true);
+    Promise.resolve().then(() => {
+      setAuthLoading(true);
+    });
     const auth = getFirebaseAuth();
     const db = getFirebaseDb();
 
