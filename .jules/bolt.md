@@ -1,0 +1,3 @@
+## 2026-05-23 - Stable dependencies & Single-pass filters on Dashboard Home
+**Learning:** Reconstructing Date objects directly inside render bodies and listing them in `useMemo` dependency arrays causes reference-equality failures on every render, invalidating memoization completely.
+**Action:** Use a stable primitive string format (like `"yyyy-MM-dd"`) representing today's date as a trigger key, do all actual Date range initialization inside the `useMemo` callback body, and consolidate array aggregations (like `.filter()`, `.reduce()`, and staging-checks) into highly efficient, single-pass `forEach` loops to maximize CPU efficiency.
