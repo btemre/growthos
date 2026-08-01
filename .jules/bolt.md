@@ -1,0 +1,3 @@
+## 2025-02-01 - DashboardHome useMemo Optimization
+**Learning:** `useMemo` hooks calculating date-based filters lose their entire memoization benefit if they depend on date variables (like `todayStart` or `weekAgo`) created as fresh `Date` objects inside the render body. This causes unnecessary recalculations and redundant sub-array filtering/reductions on every commit-phase update.
+**Action:** Extract a stable string key representational of the current calendar day (e.g. `todayKey = format(new Date(), 'yyyy-MM-dd')`) in the component body and place it in the dependency array. Construct date objects inside the `useMemo` block itself. Bundle multi-pass filters/reduces into structured single-pass linear iterations (O(N)) for maximum performance.
