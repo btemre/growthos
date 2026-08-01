@@ -50,16 +50,18 @@ export function LeadChannelDialogs({
           </DialogHeader>
           <div className="grid gap-3 py-2">
             <div className="space-y-2">
-              <Label>Konu</Label>
+              <Label htmlFor="email-subject">Konu</Label>
               <Input
+                id="email-subject"
                 value={emailSubject}
                 onChange={(e) => setEmailSubject(e.target.value)}
                 placeholder="Konu"
               />
             </div>
             <div className="space-y-2">
-              <Label>Metin</Label>
+              <Label htmlFor="email-body">Metin</Label>
               <Textarea
+                id="email-body"
                 rows={6}
                 value={emailBody}
                 onChange={(e) => setEmailBody(e.target.value)}
@@ -84,8 +86,9 @@ export function LeadChannelDialogs({
             Meta politikası: sohbet penceresi dışında şablon mesajı gerekir.
           </p>
           <div className="space-y-2 py-2">
-            <Label>Mesaj</Label>
+            <Label htmlFor="wa-body">Mesaj</Label>
             <Textarea
+              id="wa-body"
               rows={5}
               value={waBody}
               onChange={(e) => setWaBody(e.target.value)}
