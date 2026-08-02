@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, memo } from "react";
 import {
   DndContext,
   type DragEndEvent,
@@ -64,7 +64,8 @@ function StageColumn({
   );
 }
 
-function DealCard({
+// Wrap DealCard in React.memo to prevent unnecessary cascade re-renders of unchanged cards in the pipeline
+const DealCard = memo(function DealCard({
   deal,
   ownerLabel,
   showProposalLink,
@@ -122,7 +123,7 @@ function DealCard({
       </Card>
     </div>
   );
-}
+});
 
 export function CorporateBoard() {
   const { firebaseUser, profile } = useAuth();
