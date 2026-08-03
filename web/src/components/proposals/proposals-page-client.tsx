@@ -82,6 +82,7 @@ export function ProposalsPageClient() {
   }, [uid, isAdmin, allowed]);
 
   const dealIds = useMemo(() => deals.map((d) => d.id), [deals]);
+  const dealIdsKey = dealIds.join(",");
 
   useEffect(() => {
     if (!uid || !allowed) return;
@@ -91,7 +92,8 @@ export function ProposalsPageClient() {
       { isAdmin, dealIds },
       setProposals
     );
-  }, [uid, isAdmin, allowed, dealIds.join(",")]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [uid, isAdmin, allowed, dealIdsKey]);
 
   const dealById = useMemo(() => {
     const m = new Map<string, Deal>();
@@ -99,11 +101,16 @@ export function ProposalsPageClient() {
     return m;
   }, [deals]);
 
-  useEffect(() => {
+  const [prevPreDealId, setPrevPreDealId] = useState(preDealId);
+  const [prevDeals, setPrevDeals] = useState<Deal[]>(deals);
+
+  if (preDealId !== prevPreDealId || deals !== prevDeals) {
+    setPrevPreDealId(preDealId);
+    setPrevDeals(deals);
     if (preDealId && deals.some((d) => d.id === preDealId)) {
       setDealId(preDealId);
     }
-  }, [preDealId, deals]);
+  }
 
   function openCreate() {
     setEditing(null);

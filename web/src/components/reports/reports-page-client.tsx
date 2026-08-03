@@ -141,6 +141,7 @@ export function ReportsPageClient() {
   }, [uid, isAdmin]);
 
   const dealIds = useMemo(() => deals.map((d) => d.id), [deals]);
+  const dealIdsKey = dealIds.join(",");
 
   useEffect(() => {
     if (!uid || !showCorporate) return;
@@ -150,7 +151,8 @@ export function ReportsPageClient() {
       { isAdmin, dealIds },
       setProposals
     );
-  }, [uid, isAdmin, showCorporate, dealIds.join(",")]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [uid, isAdmin, showCorporate, dealIdsKey]);
 
   useEffect(() => {
     if (!uid || !showEnrollmentsBlock) return;
@@ -168,36 +170,6 @@ export function ReportsPageClient() {
       setActivities
     );
   }, [uid, range.start, range.end]);
-
-  const leadsInRange = useMemo(
-    () => leads.filter((l) => inRange(l.createdAt, range.start, range.end)),
-    [leads, range.start, range.end]
-  );
-
-  const bySource = useMemo(() => {
-    const counts: Record<string, number> = {};
-    LEAD_SOURCES.forEach((s) => {
-      counts[s] = 0;
-    });
-    leadsInRange.forEach((l) => {
-      counts[l.source] = (counts[l.source] ?? 0) + 1;
-    });
-    return LEAD_SOURCES.map((s) => ({
-      key: s,
-      name: LABELS.source[s],
-      count: counts[s] ?? 0,
-    }));
-  }, [leadsInRange]);
-
-  const enrolledInRange = useMemo(
-    () =>
-      leads.filter(
-        (l) =>
-          l.educationStage === "enrolled" &&
-          inRange(l.updatedAt, range.start, range.end)
-      ),
-    [leads, range.start, range.end]
-  );
 
   const enrollmentsInRange = useMemo(
     () =>
@@ -253,69 +225,128 @@ export function ReportsPageClient() {
       : null;
   }, [deals]);
 
-  const tasksDoneInRange = useMemo(
-    () =>
-      tasks.filter(
-        (t) =>
-          t.status === "done" &&
-          inRange(t.completedAt, range.start, range.end)
-      ),
-    [tasks, range.start, range.end]
-  );
+  // Consolidate statistics on the `leads` collection into a single-pass loop.
+  // This reduces the complexity from O(M * N) to O(N) (where M is number of lead sources and N is number of leads).
+  // It also prevents multiple separate array allocations and redundant iterations.
+  const globalStats = useMemo(() => {
+    const leadsInRangeArr: Lead[] = [];
+    const enrolledInRangeArr: Lead[] = [];
+    let enrolledAllCount = 0;
 
-  const tasksOverdueOpen = useMemo(() => {
-    const now = new Date();
-    return tasks.filter(
-      (t) =>
-        t.status === "open" &&
-        t.dueDate &&
-        t.dueDate < now
-    );
-  }, [tasks]);
+    const sourceCounts: Record<string, number> = {};
+    const sourceConversion: Record<string, { total: number; enrolled: number }> = {};
+    for (const s of LEAD_SOURCES) {
+      sourceCounts[s] = 0;
+      sourceConversion[s] = { total: 0, enrolled: 0 };
+    }
 
-  const ownerStats = useMemo(() => {
-    if (!isAdmin) return [];
-    const map = new Map<
-      string,
-      { leadsNew: number; dealsWon: number }
-    >();
-    leadsInRange.forEach((l) => {
-      const o = l.ownerId;
-      if (!map.has(o)) map.set(o, { leadsNew: 0, dealsWon: 0 });
-      const m = map.get(o)!;
-      m.leadsNew += 1;
-    });
-    dealsWonInRange.forEach((d) => {
-      const o = d.ownerId;
-      if (!map.has(o)) map.set(o, { leadsNew: 0, dealsWon: 0 });
-      map.get(o)!.dealsWon += 1;
-    });
-    const name = (id: string) => users.find((u) => u.id === id)?.name ?? id;
-    return [...map.entries()]
-      .map(([id, v]) => ({ id, name: name(id), ...v }))
-      .sort((a, b) => b.leadsNew + b.dealsWon - (a.leadsNew + a.dealsWon));
-  }, [isAdmin, leadsInRange, dealsWonInRange, users]);
+    for (const l of leads) {
+      const isEnrolled = l.educationStage === "enrolled";
+      if (isEnrolled) {
+        enrolledAllCount++;
+      }
 
-  const conversionBySource = useMemo(() => {
-    const rows: { source: string; total: number; enrolled: number; pct: number }[] =
-      [];
-    LEAD_SOURCES.forEach((s) => {
-      const subset = leads.filter((l) => l.source === s);
-      const total = subset.length;
-      const en = subset.filter((l) => l.educationStage === "enrolled").length;
-      rows.push({
+      if (sourceConversion[l.source]) {
+        sourceConversion[l.source].total++;
+        if (isEnrolled) {
+          sourceConversion[l.source].enrolled++;
+        }
+      }
+
+      if (inRange(l.createdAt, range.start, range.end)) {
+        leadsInRangeArr.push(l);
+        if (sourceCounts[l.source] !== undefined) {
+          sourceCounts[l.source]++;
+        }
+      }
+
+      if (isEnrolled && inRange(l.updatedAt, range.start, range.end)) {
+        enrolledInRangeArr.push(l);
+      }
+    }
+
+    const bySourceArr = LEAD_SOURCES.map((s) => ({
+      key: s,
+      name: LABELS.source[s],
+      count: sourceCounts[s] ?? 0,
+    }));
+
+    const conversionBySourceArr = LEAD_SOURCES.map((s) => {
+      const sc = sourceConversion[s];
+      const total = sc?.total ?? 0;
+      const en = sc?.enrolled ?? 0;
+      return {
         source: LABELS.source[s],
         total,
         enrolled: en,
         pct: total ? Math.round((en / total) * 100) : 0,
-      });
-    });
-    return rows.filter((r) => r.total > 0).sort((a, b) => b.pct - a.pct);
-  }, [leads]);
+      };
+    })
+      .filter((r) => r.total > 0)
+      .sort((a, b) => b.pct - a.pct);
+
+    let ownerStatsArr: { id: string; name: string; leadsNew: number; dealsWon: number }[] = [];
+    if (isAdmin) {
+      const ownerMap = new Map<string, { leadsNew: number; dealsWon: number }>();
+      for (const l of leadsInRangeArr) {
+        const o = l.ownerId;
+        let stats = ownerMap.get(o);
+        if (!stats) {
+          stats = { leadsNew: 0, dealsWon: 0 };
+          ownerMap.set(o, stats);
+        }
+        stats.leadsNew++;
+      }
+      for (const d of dealsWonInRange) {
+        const o = d.ownerId;
+        let stats = ownerMap.get(o);
+        if (!stats) {
+          stats = { leadsNew: 0, dealsWon: 0 };
+          ownerMap.set(o, stats);
+        }
+        stats.dealsWon++;
+      }
+      const nameMap = new Map<string, string>();
+      for (const u of users) {
+        nameMap.set(u.id, u.name);
+      }
+      ownerStatsArr = [...ownerMap.entries()]
+        .map(([id, v]) => ({
+          id,
+          name: nameMap.get(id) ?? id,
+          ...v,
+        }))
+        .sort((a, b) => b.leadsNew + b.dealsWon - (a.leadsNew + a.dealsWon));
+    }
+
+    return {
+      leadsInRange: leadsInRangeArr,
+      enrolledInRange: enrolledInRangeArr,
+      enrolledAll: enrolledAllCount,
+      bySource: bySourceArr,
+      conversionBySource: conversionBySourceArr,
+      ownerStats: ownerStatsArr,
+    };
+  }, [leads, range.start, range.end, isAdmin, dealsWonInRange, users]);
+
+  // Consolidate tasks stats (done & overdue) into a single-pass loop.
+  const taskStats = useMemo(() => {
+    const tasksDone: Task[] = [];
+    const tasksOverdue: Task[] = [];
+    const now = new Date();
+    for (const t of tasks) {
+      if (t.status === "done" && inRange(t.completedAt, range.start, range.end)) {
+        tasksDone.push(t);
+      } else if (t.status === "open" && t.dueDate && t.dueDate < now) {
+        tasksOverdue.push(t);
+      }
+    }
+    return { tasksDone, tasksOverdue };
+  }, [tasks, range.start, range.end]);
 
   const csvRowCount = useMemo(() => {
-    return 12 + leadsInRange.length;
-  }, [leadsInRange.length]);
+    return 12 + globalStats.leadsInRange.length;
+  }, [globalStats.leadsInRange.length]);
 
   function exportCsv() {
     const rows: string[][] = [
@@ -324,15 +355,15 @@ export function ReportsPageClient() {
       ["Aralık sonu", range.end.toISOString()],
       [],
       ["Metrik", "Değer"],
-      ["Yeni lead (aralık)", String(leadsInRange.length)],
+      ["Yeni lead (aralık)", String(globalStats.leadsInRange.length)],
       ["Görüşme/tel/WA aktivitesi", String(discussionActivities.length)],
       ["Yeni program kaydı (enrollment)", String(enrollmentsInRange.length)],
       ["Teklif (gönderildi/kabul)", String(proposalsSentInRange.length)],
       ["Kazanılan fırsat", String(dealsWonInRange.length)],
-      ["Tamamlanan görev", String(tasksDoneInRange.length)],
+      ["Tamamlanan görev", String(taskStats.tasksDone.length)],
       [],
       ["Lead id", "Ad", "Sahip id", "Kaynak", "Eğitim aşaması"],
-      ...leadsInRange.map((l) => [
+      ...globalStats.leadsInRange.map((l) => [
         l.id,
         l.name,
         l.ownerId,
@@ -347,9 +378,8 @@ export function ReportsPageClient() {
   }
 
   const totalLeadsAll = leads.length;
-  const enrolledAll = leads.filter((l) => l.educationStage === "enrolled").length;
   const conversionAll = totalLeadsAll
-    ? Math.round((enrolledAll / totalLeadsAll) * 100)
+    ? Math.round((globalStats.enrolledAll / totalLeadsAll) * 100)
     : 0;
 
   return (
@@ -419,7 +449,7 @@ export function ReportsPageClient() {
             </CardTitle>
           </CardHeader>
           <CardContent className="text-3xl font-semibold">
-            {leadsInRange.length}
+            {globalStats.leadsInRange.length}
           </CardContent>
         </Card>
         <Card>
@@ -449,7 +479,7 @@ export function ReportsPageClient() {
             </CardTitle>
           </CardHeader>
           <CardContent className="text-3xl font-semibold">
-            {enrolledInRange.length}
+            {globalStats.enrolledInRange.length}
           </CardContent>
         </Card>
       </div>
@@ -513,7 +543,7 @@ export function ReportsPageClient() {
               Kayıt olan (eğitim, tümü)
             </CardTitle>
           </CardHeader>
-          <CardContent className="text-3xl font-semibold">{enrolledAll}</CardContent>
+          <CardContent className="text-3xl font-semibold">{globalStats.enrolledAll}</CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
@@ -533,7 +563,7 @@ export function ReportsPageClient() {
             </CardTitle>
           </CardHeader>
           <CardContent className="text-3xl font-semibold">
-            {tasksDoneInRange.length}
+            {taskStats.tasksDone.length}
           </CardContent>
         </Card>
         <Card>
@@ -543,12 +573,12 @@ export function ReportsPageClient() {
             </CardTitle>
           </CardHeader>
           <CardContent className="text-3xl font-semibold text-destructive">
-            {tasksOverdueOpen.length}
+            {taskStats.tasksOverdue.length}
           </CardContent>
         </Card>
       </div>
 
-      {isAdmin && ownerStats.length > 0 ? (
+      {isAdmin && globalStats.ownerStats.length > 0 ? (
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Personel özeti (dönem)</CardTitle>
@@ -563,7 +593,7 @@ export function ReportsPageClient() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {ownerStats.map((r) => (
+                {globalStats.ownerStats.map((r) => (
                   <TableRow key={r.id}>
                     <TableCell>{r.name}</TableCell>
                     <TableCell className="text-right tabular-nums">
@@ -580,7 +610,7 @@ export function ReportsPageClient() {
         </Card>
       ) : null}
 
-      {isAdmin && conversionBySource.length > 0 ? (
+      {isAdmin && globalStats.conversionBySource.length > 0 ? (
         <Card>
           <CardHeader>
             <CardTitle className="text-base">
@@ -598,7 +628,7 @@ export function ReportsPageClient() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {conversionBySource.slice(0, 12).map((r) => (
+                {globalStats.conversionBySource.slice(0, 12).map((r) => (
                   <TableRow key={r.source}>
                     <TableCell>{r.source}</TableCell>
                     <TableCell className="text-right tabular-nums">
@@ -626,7 +656,7 @@ export function ReportsPageClient() {
         </CardHeader>
         <CardContent className="h-80 w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={bySource} margin={{ left: 8, right: 8, bottom: 8 }}>
+            <BarChart data={globalStats.bySource} margin={{ left: 8, right: 8, bottom: 8 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
               <XAxis
                 dataKey="name"
