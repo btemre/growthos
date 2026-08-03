@@ -1,0 +1,3 @@
+## 2025-02-18 - Label and Custom SelectTrigger Accessibility Association
+**Learning:** In shadcn-like design systems, the generic `<Select>` component wraps a trigger button (`SelectTrigger`) which acts as the focusable element. Traditional `<Label>` elements do not automatically focus custom triggers unless they are explicitly associated. Programmatically linking form `<Label>` elements with custom `<SelectTrigger>` components using matching `htmlFor` and `id` attributes ensures full keyboard and screen-reader accessibility across dropdown fields.
+**Action:** Always assign a unique `id` to the custom `<SelectTrigger>` and a corresponding `htmlFor` attribute to its `<Label>` whenever introducing or updating select fields in the application.
