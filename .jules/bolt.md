@@ -1,0 +1,3 @@
+## 2025-02-23 - [Single-Pass Loop Optimization in ReportsPageClient]
+**Learning:** Multiple separate loops (e.g. `filter`, `forEach`) filtering and reducing the same list collection (e.g., `leads`) triggers cascading iteration costs and excessive heap allocation churn. Consolidating statistics calculations into a single `forEach` pass inside a memoized `useMemo` block drops complex computational time from O(M * N) down to O(N).
+**Action:** When calculating several metrics from a single source list in high-volume views, use a single-pass loop inside `useMemo` to extract all stats concurrently rather than chaining multiple array search/filter iterations.
