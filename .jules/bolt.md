@@ -1,0 +1,3 @@
+## 2025-02-18 - [Date Reference Instability in React useMemo]
+**Learning:** Instantiating `new Date()` or derived Date objects inside a component body and passing them directly to a `useMemo` dependency array completely breaks memoization. Since React does shallow equality checks on dependencies, newly created Date objects on every render evaluate as unequal references, causing the `useMemo` to recalculate on every single render.
+**Action:** Instead of passing Date objects, compute a stabilized string key (like `format(new Date(), "yyyy-MM-dd")`) inside the render scope and list only this string key as a dependency. Instantiate actual Date objects internally within the `useMemo` computation function.
