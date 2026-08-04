@@ -132,12 +132,18 @@ export function CalendarPageClient() {
               const dayEvents = events.filter((e) => isSameDay(e.date, day));
               const inMonth = isSameMonth(day, viewMonth);
               const selected = isSameDay(day, selectedDay);
+              const dateLabel = format(day, "d MMMM yyyy", { locale: tr });
+              const eventCountText = dayEvents.length > 0 ? `, ${dayEvents.length} olay` : "";
+              const ariaLabel = `${dateLabel}${eventCountText}`;
+
               return (
                 <button
                   key={day.toISOString()}
                   type="button"
                   onClick={() => setSelectedDay(day)}
-                  className={`min-h-16 rounded-md border p-1 text-left text-xs transition-colors ${
+                  aria-pressed={selected}
+                  aria-label={ariaLabel}
+                  className={`min-h-16 rounded-md border p-1 text-left text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 relative ${
                     inMonth ? "bg-card" : "bg-muted/30 text-muted-foreground"
                   } ${selected ? "ring-2 ring-primary" : ""}`}
                 >
