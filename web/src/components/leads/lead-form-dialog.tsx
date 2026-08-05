@@ -24,10 +24,7 @@ import {
 import { LEAD_SOURCES, LEAD_TYPES, LABELS } from "@/lib/constants";
 import { getFirebaseDb } from "@/lib/firebase/client";
 import { createLead } from "@/lib/firestore/leads";
-import {
-  leadFormSchema,
-  type LeadFormValues,
-} from "@/lib/schemas/lead";
+import { leadFormSchema, type LeadFormValues } from "@/lib/schemas/lead";
 import type { LeadSource, LeadType } from "@/types/models";
 
 export function LeadFormDialog({ ownerId }: { ownerId: string }) {
@@ -88,16 +85,18 @@ export function LeadFormDialog({ ownerId }: { ownerId: string }) {
               <Label htmlFor="lead-name">Ad / görünen ad</Label>
               <Input id="lead-name" {...register("name")} />
               {errors.name ? (
-                <p className="text-xs text-destructive">{errors.name.message}</p>
+                <p className="text-xs text-destructive">
+                  {errors.name.message}
+                </p>
               ) : null}
             </div>
             <div className="space-y-2">
-              <Label>Tür</Label>
+              <Label htmlFor="lead-type">Tür</Label>
               <Select
                 value={type}
                 onValueChange={(v) => v && setValue("type", v as LeadType)}
               >
-                <SelectTrigger>
+                <SelectTrigger id="lead-type">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -110,12 +109,12 @@ export function LeadFormDialog({ ownerId }: { ownerId: string }) {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Kaynak</Label>
+              <Label htmlFor="lead-source">Kaynak</Label>
               <Select
                 value={source}
                 onValueChange={(v) => v && setValue("source", v as LeadSource)}
               >
-                <SelectTrigger>
+                <SelectTrigger id="lead-source">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -131,7 +130,9 @@ export function LeadFormDialog({ ownerId }: { ownerId: string }) {
               <Label htmlFor="lead-email">E-posta</Label>
               <Input id="lead-email" type="email" {...register("email")} />
               {errors.email ? (
-                <p className="text-xs text-destructive">{errors.email.message}</p>
+                <p className="text-xs text-destructive">
+                  {errors.email.message}
+                </p>
               ) : null}
             </div>
             <div className="space-y-2">
@@ -140,10 +141,14 @@ export function LeadFormDialog({ ownerId }: { ownerId: string }) {
             </div>
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setOpen(false)}
+            >
               İptal
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
+            <Button type="submit" loading={isSubmitting}>
               Kaydet
             </Button>
           </DialogFooter>
