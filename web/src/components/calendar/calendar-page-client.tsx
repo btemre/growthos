@@ -6,7 +6,6 @@ import {
   eachDayOfInterval,
   endOfMonth,
   format,
-  isSameDay,
   isSameMonth,
   startOfMonth,
   startOfWeek,
@@ -77,15 +76,36 @@ export function CalendarPageClient() {
     return list;
   }, [tasks, leads]);
 
-  const monthStart = startOfMonth(viewMonth);
-  const monthEnd = endOfMonth(viewMonth);
-  const gridStart = startOfWeek(monthStart, { weekStartsOn: 1 });
-  const gridEnd = startOfWeek(addDays(monthEnd, 6), { weekStartsOn: 1 });
-  const days = eachDayOfInterval({ start: gridStart, end: addDays(gridEnd, 6) });
+  // Optimize event lookup by pre-grouping events by date string "yyyy-MM-dd"
+  const eventsByDate = useMemo(() => {
+    const map = new Map<string, CalEvent[]>();
+    for (const e of events) {
+      const key = format(e.date, "yyyy-MM-dd");
+      const list = map.get(key) ?? [];
+      list.push(e);
+      map.set(key, list);
+    }
+    return map;
+  }, [events]);
 
-  const selectedDayEvents = events.filter((e) =>
-    isSameDay(e.date, selectedDay)
-  );
+  // Optimize calendar grid generation by memoizing the grid of 35-42 days.
+  // This avoids redundant date-fns computations (startOfMonth, startOfWeek, eachDayOfInterval)
+  // on every render (e.g. when changing selectedDay or when subscriptions update).
+  const days = useMemo(() => {
+    const monthStart = startOfMonth(viewMonth);
+    const monthEnd = endOfMonth(viewMonth);
+    const gridStart = startOfWeek(monthStart, { weekStartsOn: 1 });
+    const gridEnd = startOfWeek(addDays(monthEnd, 6), { weekStartsOn: 1 });
+    return eachDayOfInterval({ start: gridStart, end: addDays(gridEnd, 6) });
+  }, [viewMonth]);
+
+  // Memoize the selected day formatted key for O(1) matching during day rendering and event filtering.
+  const selectedKey = useMemo(() => format(selectedDay, "yyyy-MM-dd"), [selectedDay]);
+
+  // Retrieve selected day events with O(1) lookup on the pre-grouped map.
+  const selectedDayEvents = useMemo(() => {
+    return eventsByDate.get(selectedKey) ?? [];
+  }, [eventsByDate, selectedKey]);
 
   return (
     <div className="space-y-6">
@@ -129,12 +149,15 @@ export function CalendarPageClient() {
           </div>
           <div className="grid grid-cols-7 gap-1">
             {days.map((day) => {
-              const dayEvents = events.filter((e) => isSameDay(e.date, day));
+              const dayKey = format(day, "yyyy-MM-dd");
+              // O(1) lookup from the precomputed eventsMap instead of O(E) filter on every day cell
+              const dayEvents = eventsByDate.get(dayKey) ?? [];
               const inMonth = isSameMonth(day, viewMonth);
-              const selected = isSameDay(day, selectedDay);
+              // O(1) string equality check instead of calling isSameDay(day, selectedDay)
+              const selected = dayKey === selectedKey;
               return (
                 <button
-                  key={day.toISOString()}
+                  key={dayKey}
                   type="button"
                   onClick={() => setSelectedDay(day)}
                   className={`min-h-16 rounded-md border p-1 text-left text-xs transition-colors ${
