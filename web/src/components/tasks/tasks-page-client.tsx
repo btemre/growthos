@@ -2,7 +2,14 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { addDays, format, isBefore, startOfDay, startOfWeek, endOfWeek } from "date-fns";
+import {
+  addDays,
+  format,
+  isBefore,
+  startOfDay,
+  startOfWeek,
+  endOfWeek,
+} from "date-fns";
 import { tr } from "date-fns/locale";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -28,21 +35,22 @@ import {
 } from "@/components/ui/select";
 import { PageHeader } from "@/components/shared/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
-import { StatusBadge, taskPriorityTone } from "@/components/shared/status-badge";
+import {
+  StatusBadge,
+  taskPriorityTone,
+} from "@/components/shared/status-badge";
 import { useAuth } from "@/contexts/auth-context";
 import { getFirebaseDb } from "@/lib/firebase/client";
 import { subscribeLeadsForUser } from "@/lib/firestore/leads";
-import { completeTask, createTask, subscribeTasksForUser } from "@/lib/firestore/tasks";
+import {
+  completeTask,
+  createTask,
+  subscribeTasksForUser,
+} from "@/lib/firestore/tasks";
 import { taskFormSchema, type TaskFormValues } from "@/lib/schemas/task";
 import type { Lead, Task } from "@/types/models";
 
-function TaskRow({
-  task,
-  onComplete,
-}: {
-  task: Task;
-  onComplete: () => void;
-}) {
+function TaskRow({ task, onComplete }: { task: Task; onComplete: () => void }) {
   return (
     <Card className="border-border/80">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -115,7 +123,7 @@ export function TasksPageClient() {
 
   const educationLeads = useMemo(
     () => leads.filter((l) => l.type === "education_candidate"),
-    [leads]
+    [leads],
   );
 
   const todayStart = startOfDay(new Date());
@@ -127,12 +135,12 @@ export function TasksPageClient() {
     if (filterOverdue) {
       list = list.filter(
         (t) =>
-          t.status === "open" && t.dueDate && isBefore(t.dueDate, todayStart)
+          t.status === "open" && t.dueDate && isBefore(t.dueDate, todayStart),
       );
     }
     const overdue = list.filter(
       (t) =>
-        t.status === "open" && t.dueDate && isBefore(t.dueDate, todayStart)
+        t.status === "open" && t.dueDate && isBefore(t.dueDate, todayStart),
     );
     const todayEnd = addDays(todayStart, 1);
     const today = list.filter(
@@ -140,7 +148,7 @@ export function TasksPageClient() {
         t.status === "open" &&
         t.dueDate &&
         !isBefore(t.dueDate, todayStart) &&
-        isBefore(t.dueDate, todayEnd)
+        isBefore(t.dueDate, todayEnd),
     );
     const todayIds = new Set(today.map((t) => t.id));
     const overdueIds = new Set(overdue.map((t) => t.id));
@@ -151,7 +159,7 @@ export function TasksPageClient() {
         !isBefore(t.dueDate, weekStart) &&
         !isBefore(weekEnd, t.dueDate) &&
         !todayIds.has(t.id) &&
-        !overdueIds.has(t.id)
+        !overdueIds.has(t.id),
     );
     const weekIds = new Set(thisWeek.map((t) => t.id));
     const later = list.filter(
@@ -159,7 +167,7 @@ export function TasksPageClient() {
         t.status === "open" &&
         !overdueIds.has(t.id) &&
         !todayIds.has(t.id) &&
-        !weekIds.has(t.id)
+        !weekIds.has(t.id),
     );
     return { overdue, today, thisWeek, later, all: list };
   }, [tasks, todayStart, weekStart, weekEnd, filterOverdue]);
@@ -222,19 +230,21 @@ export function TasksPageClient() {
                 </DialogHeader>
                 <div className="grid gap-3 py-4">
                   <div className="space-y-2">
-                    <Label>Başlık</Label>
-                    <Input {...register("title")} />
+                    <Label htmlFor="task-title">Başlık</Label>
+                    <Input id="task-title" {...register("title")} />
                     {errors.title ? (
-                      <p className="text-xs text-destructive">{errors.title.message}</p>
+                      <p className="text-xs text-destructive">
+                        {errors.title.message}
+                      </p>
                     ) : null}
                   </div>
                   <div className="space-y-2">
-                    <Label>Bağlı lead</Label>
+                    <Label htmlFor="task-lead">Bağlı lead</Label>
                     <Select
                       value={leadId}
                       onValueChange={(v) => setValue("leadId", v ?? "")}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger id="task-lead">
                         <SelectValue placeholder="Lead seçin" />
                       </SelectTrigger>
                       <SelectContent>
@@ -246,22 +256,31 @@ export function TasksPageClient() {
                       </SelectContent>
                     </Select>
                     {errors.leadId ? (
-                      <p className="text-xs text-destructive">{errors.leadId.message}</p>
+                      <p className="text-xs text-destructive">
+                        {errors.leadId.message}
+                      </p>
                     ) : null}
                   </div>
                   <div className="space-y-2">
-                    <Label>Bitiş</Label>
-                    <Input type="datetime-local" {...register("dueDate")} />
+                    <Label htmlFor="task-duedate">Bitiş</Label>
+                    <Input
+                      id="task-duedate"
+                      type="datetime-local"
+                      {...register("dueDate")}
+                    />
                   </div>
                   <div className="space-y-2">
-                    <Label>Öncelik</Label>
+                    <Label htmlFor="task-priority">Öncelik</Label>
                     <Select
                       value={watch("priority")}
                       onValueChange={(v) =>
-                        setValue("priority", (v as "low" | "medium" | "high") ?? "medium")
+                        setValue(
+                          "priority",
+                          (v as "low" | "medium" | "high") ?? "medium",
+                        )
                       }
                     >
-                      <SelectTrigger>
+                      <SelectTrigger id="task-priority">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -273,7 +292,7 @@ export function TasksPageClient() {
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button type="submit" disabled={isSubmitting}>
+                  <Button type="submit" loading={isSubmitting}>
                     Oluştur
                   </Button>
                 </DialogFooter>
@@ -292,11 +311,15 @@ export function TasksPageClient() {
               </h3>
               <div className="grid gap-3">
                 {sec.items.map((t) => (
-                  <TaskRow key={t.id} task={t} onComplete={() => void complete(t)} />
+                  <TaskRow
+                    key={t.id}
+                    task={t}
+                    onComplete={() => void complete(t)}
+                  />
                 ))}
               </div>
             </div>
-          )
+          ),
       )}
 
       {grouped.all.length === 0 ? (
