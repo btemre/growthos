@@ -37,6 +37,44 @@ export function subscribeTasksForUser(
   );
 }
 
+/**
+ * Subscribes to tasks related to a specific record (e.g. lead, deal, company).
+ * Filters on the Firestore server-side to significantly reduce data transfer,
+ * client-side memory usage, and processor overhead.
+ *
+ * It sorts the fetched documents client-side on `createdAt` descending, which
+ * avoids requiring custom composite Firestore indexes.
+ */
+export function subscribeTasksForRelated(
+  db: Firestore,
+  relatedType: "lead" | "deal" | "company",
+  relatedId: string,
+  onData: (tasks: Task[]) => void,
+  onError?: (e: Error) => void
+): Unsubscribe {
+  const col = collection(db, "tasks");
+  const q = query(
+    col,
+    where("relatedType", "==", relatedType),
+    where("relatedId", "==", relatedId)
+  );
+
+  return onSnapshot(
+    q,
+    (snap) => {
+      const list = snap.docs.map((d) => taskFromDoc(d.id, d.data()));
+      // Sort client-side by createdAt desc (if present) to avoid custom composite index requirements
+      list.sort((a, b) => {
+        const timeA = a.createdAt ? a.createdAt.getTime() : 0;
+        const timeB = b.createdAt ? b.createdAt.getTime() : 0;
+        return timeB - timeA;
+      });
+      onData(list);
+    },
+    (err) => onError?.(err as Error)
+  );
+}
+
 export async function createTask(
   db: Firestore,
   input: {
