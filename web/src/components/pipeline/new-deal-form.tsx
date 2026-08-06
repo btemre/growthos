@@ -83,12 +83,12 @@ function DealFormFields({
         ) : null}
       </div>
       <div className="space-y-2">
-        <Label>Hizmet türü</Label>
+        <Label htmlFor="service-type-select">Hizmet türü</Label>
         <Select
           value={serviceType}
           onValueChange={(v) => v && setValue("serviceType", v as ServiceType)}
         >
-          <SelectTrigger>
+          <SelectTrigger id="service-type-select">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -109,8 +109,8 @@ function DealFormFields({
           {...register("estimatedValue")}
         />
       </div>
-      <Button type="submit" disabled={busy} className="w-full">
-        {busy ? "Kaydediliyor…" : "Oluştur"}
+      <Button type="submit" loading={busy} className="w-full">
+        Oluştur
       </Button>
     </form>
   );

@@ -6,7 +6,7 @@ import { tr } from "date-fns/locale";
 import Link from "next/link";
 import { ClipboardList, Sparkles } from "lucide-react";
 import { toast } from "sonner";
-import { buttonVariants } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -133,9 +133,9 @@ export function GlobalRightRail() {
         </CardHeader>
         <CardContent className="space-y-3 text-xs">
           <div className="space-y-1.5">
-            <Label>Lead</Label>
+            <Label htmlFor="quick-lead-select">Lead</Label>
             <Select value={quickLeadId} onValueChange={(v) => setQuickLeadId(v ?? "")}>
-              <SelectTrigger>
+              <SelectTrigger id="quick-lead-select">
                 <SelectValue placeholder="Lead seçin" />
               </SelectTrigger>
               <SelectContent>
@@ -155,14 +155,15 @@ export function GlobalRightRail() {
               onChange={(e) => setQuickTask(e.target.value)}
               placeholder="Bugün yapılacak…"
             />
-            <button
+            <Button
               type="button"
-              className={cn(buttonVariants({ size: "sm" }), "w-full")}
-              disabled={busy}
+              size="sm"
+              className="w-full"
+              loading={busy}
               onClick={() => void submitQuickTask()}
             >
               Görev ekle
-            </button>
+            </Button>
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="quick-note">Hızlı not</Label>
@@ -173,14 +174,16 @@ export function GlobalRightRail() {
               onChange={(e) => setQuickNote(e.target.value)}
               placeholder="Kısa not…"
             />
-            <button
+            <Button
               type="button"
-              className={cn(buttonVariants({ size: "sm", variant: "outline" }), "w-full")}
-              disabled={busy}
+              size="sm"
+              variant="outline"
+              className="w-full"
+              loading={busy}
               onClick={() => void submitQuickNote()}
             >
               Not kaydet
-            </button>
+            </Button>
           </div>
         </CardContent>
       </Card>
