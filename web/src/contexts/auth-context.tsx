@@ -52,6 +52,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const needsFirebaseConfig = bootstrapState === "missing";
 
+  // Performance Optimization: Use render-phase state synchronization to prevent cascading renders on mount/transitions
+  const [prevBootstrapState, setPrevBootstrapState] = useState<BootstrapState>(bootstrapState);
+  if (bootstrapState !== prevBootstrapState) {
+    setPrevBootstrapState(bootstrapState);
+    if (bootstrapState !== "ready") {
+      setAuthLoading(false);
+    } else {
+      setAuthLoading(true);
+    }
+  }
+
   const refreshProfile = useCallback(async () => {
     if (needsFirebaseConfig || bootstrapState !== "ready" || !firebaseUser) {
       setProfile(null);
@@ -64,7 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (isFirebaseConfigured()) {
-      setBootstrapState("ready");
+      // Already configured and set via initialBootstrap(), no setBootstrapState call needed
       return;
     }
 
@@ -98,11 +109,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (bootstrapState !== "ready") {
-      setAuthLoading(false);
       return;
     }
 
-    setAuthLoading(true);
     const auth = getFirebaseAuth();
     const db = getFirebaseDb();
 

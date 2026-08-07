@@ -118,11 +118,16 @@ export function TasksPageClient() {
     [leads]
   );
 
-  const todayStart = startOfDay(new Date());
-  const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
-  const weekEnd = endOfWeek(new Date(), { weekStartsOn: 1 });
+  // Performance Optimization: Stabilize dependency tracking with a string key representation of today's date.
+  // Using direct Date objects (todayStart, etc.) as useMemo dependencies causes the calculation to re-run on
+  // every single render (e.g. typing, modal toggling) because Date object references differ across renders.
+  const todayKey = format(new Date(), "yyyy-MM-dd");
 
   const grouped = useMemo(() => {
+    const todayStart = startOfDay(new Date());
+    const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
+    const weekEnd = endOfWeek(new Date(), { weekStartsOn: 1 });
+
     let list = tasks;
     if (filterOverdue) {
       list = list.filter(
@@ -162,7 +167,8 @@ export function TasksPageClient() {
         !weekIds.has(t.id)
     );
     return { overdue, today, thisWeek, later, all: list };
-  }, [tasks, todayStart, weekStart, weekEnd, filterOverdue]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tasks, filterOverdue, todayKey]);
 
   async function onCreate(values: TaskFormValues) {
     if (!uid) return;

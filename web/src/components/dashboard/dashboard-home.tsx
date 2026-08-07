@@ -98,12 +98,17 @@ export function DashboardHome() {
     };
   }, [uid, isAdmin]);
 
-  const todayStart = startOfDay(new Date());
-  const todayEnd = endOfDay(new Date());
-  const weekAgo = startOfDay(subDays(new Date(), 7));
-  const monthStart = startOfMonth(new Date());
+  // Performance Optimization: Stabilize dependency tracking with a string key representation of today's date.
+  // Using direct Date objects (todayStart, etc.) as useMemo dependencies causes the calculation to re-run on
+  // every single render because Date object references differ across renders.
+  const todayKey = format(new Date(), "yyyy-MM-dd");
 
   const stats = useMemo(() => {
+    const todayStart = startOfDay(new Date());
+    const todayEnd = endOfDay(new Date());
+    const weekAgo = startOfDay(subDays(new Date(), 7));
+    const monthStart = startOfMonth(new Date());
+
     const leadsToday = leads.filter((l) => {
       const c = l.createdAt;
       if (!c) return false;
@@ -178,7 +183,8 @@ export function DashboardHome() {
       awaitingPayment,
       overdueTasks,
     };
-  }, [leads, tasks, deals, activities, todayStart, todayEnd, weekAgo, monthStart]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leads, tasks, deals, activities, todayKey]);
 
   return (
     <div className="space-y-8">
