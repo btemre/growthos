@@ -99,11 +99,18 @@ export function ProposalsPageClient() {
     return m;
   }, [deals]);
 
-  useEffect(() => {
+  // Performance Optimization: Avoid cascading renders by using render-phase state synchronization
+  // instead of a mount-time or update-time useEffect. This satisfies eslint-hooks/set-state-in-effect.
+  const [prevPreDealId, setPrevPreDealId] = useState(preDealId);
+  const [prevDeals, setPrevDeals] = useState(deals);
+
+  if (preDealId !== prevPreDealId || deals !== prevDeals) {
+    setPrevPreDealId(preDealId);
+    setPrevDeals(deals);
     if (preDealId && deals.some((d) => d.id === preDealId)) {
       setDealId(preDealId);
     }
-  }, [preDealId, deals]);
+  }
 
   function openCreate() {
     setEditing(null);
