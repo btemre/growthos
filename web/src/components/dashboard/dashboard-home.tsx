@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, memo } from "react";
 import {
   endOfDay,
   format,
@@ -32,7 +32,8 @@ import { subscribeTasksForUser } from "@/lib/firestore/tasks";
 import { subscribeDealsForUser } from "@/lib/firestore/deals";
 import type { Activity, Deal, Lead, Task } from "@/types/models";
 
-function KpiCard({
+// ⚡ Bolt: Wrap KPI Cards in React.memo to avoid redundant re-renders on pipeline updates.
+const KpiCard = memo(function KpiCard({
   title,
   value,
   hint,
@@ -67,7 +68,7 @@ function KpiCard({
     );
   }
   return inner;
-}
+});
 
 export function DashboardHome() {
   const { firebaseUser, profile } = useAuth();
@@ -98,73 +99,93 @@ export function DashboardHome() {
     };
   }, [uid, isAdmin]);
 
-  const todayStart = startOfDay(new Date());
-  const todayEnd = endOfDay(new Date());
-  const weekAgo = startOfDay(subDays(new Date(), 7));
-  const monthStart = startOfMonth(new Date());
+  // ⚡ Bolt: Stable key representing current date to prevent recalculation of stats on every single render.
+  // Using unstable `new Date()` as a dependency causes `useMemo` to invalidate instantly because object references are never equal.
+  const todayKey = format(new Date(), "yyyy-MM-dd");
 
   const stats = useMemo(() => {
-    const leadsToday = leads.filter((l) => {
+    const referenceDate = new Date();
+    const todayStart = startOfDay(referenceDate);
+    const todayEnd = endOfDay(referenceDate);
+    const weekAgo = startOfDay(subDays(referenceDate, 7));
+    const monthStart = startOfMonth(referenceDate);
+    const threeDaysAgo = subDays(referenceDate, 3);
+
+    let leadsToday = 0;
+    let enrolledThisMonth = 0;
+    let closedSalesWeek = 0;
+    const hotSilent: Lead[] = [];
+    const awaitingPayment: Lead[] = [];
+
+    // ⚡ Bolt: Single-pass algorithm O(L) instead of multiple .filter() chains to minimize array traversal.
+    leads.forEach((l) => {
       const c = l.createdAt;
-      if (!c) return false;
-      return !isBefore(c, todayStart) && !isAfter(c, todayEnd);
-    }).length;
+      if (c && !isBefore(c, todayStart) && !isAfter(c, todayEnd)) {
+        leadsToday++;
+      }
 
-    const callsToday = activities.filter((a) => {
-      if (a.activityType !== "phone_call") return false;
-      const d = a.activityDate;
-      if (!d) return false;
-      return !isBefore(d, todayStart) && !isAfter(d, todayEnd);
-    }).length;
+      if (l.educationStage === "enrolled") {
+        const u = l.updatedAt;
+        if (u) {
+          if (!isBefore(u, monthStart)) {
+            enrolledThisMonth++;
+          }
+          if (!isBefore(u, weekAgo)) {
+            closedSalesWeek++;
+          }
+        }
+      } else if (l.educationStage === "awaiting_payment") {
+        awaitingPayment.push(l);
+      }
 
-    const followUpsToday = tasks.filter(
-      (t) =>
-        t.status === "open" &&
-        t.dueDate &&
-        !isBefore(t.dueDate, todayStart) &&
-        !isAfter(t.dueDate, todayEnd)
-    ).length;
-
-    const enrolledThisMonth = leads.filter((l) => {
-      if (l.educationStage !== "enrolled") return false;
-      const u = l.updatedAt;
-      if (!u) return false;
-      return !isBefore(u, monthStart);
-    }).length;
-
-    const closedSalesWeek = leads.filter((l) => {
-      if (l.educationStage !== "enrolled") return false;
-      const u = l.updatedAt;
-      if (!u) return false;
-      return !isBefore(u, weekAgo);
-    }).length;
-
-    const corpOpenedMonth = deals.filter((d) => {
-      const c = d.createdAt;
-      if (!c) return false;
-      return !isBefore(c, monthStart);
-    }).length;
-
-    const pipelineValue = deals.reduce((acc, d) => acc + (d.estimatedValue ?? 0), 0);
-
-    const hotSilent = leads.filter((l) => {
-      if (l.type !== "education_candidate") return false;
-      if (l.score < 50) return false;
-      const last = l.lastContactAt;
-      if (!last) return true;
-      return isBefore(last, subDays(new Date(), 3));
+      if (l.type === "education_candidate" && l.score >= 50) {
+        const last = l.lastContactAt;
+        if (!last || isBefore(last, threeDaysAgo)) {
+          hotSilent.push(l);
+        }
+      }
     });
 
-    const awaitingPayment = leads.filter(
-      (l) => l.educationStage === "awaiting_payment"
-    );
+    let callsToday = 0;
+    activities.forEach((a) => {
+      if (a.activityType === "phone_call") {
+        const d = a.activityDate;
+        if (d && !isBefore(d, todayStart) && !isAfter(d, todayEnd)) {
+          callsToday++;
+        }
+      }
+    });
 
-    const overdueTasks = tasks.filter(
-      (t) =>
-        t.status === "open" &&
-        t.dueDate &&
-        isBefore(t.dueDate, todayStart)
-    );
+    let followUpsToday = 0;
+    const overdueTasks: Task[] = [];
+    const openTasks: Task[] = [];
+
+    // ⚡ Bolt: Single-pass over tasks O(T). Collect openTasks directly to prevent re-filtering during rendering.
+    tasks.forEach((t) => {
+      if (t.status === "open") {
+        openTasks.push(t);
+
+        if (t.dueDate) {
+          if (!isBefore(t.dueDate, todayStart) && !isAfter(t.dueDate, todayEnd)) {
+            followUpsToday++;
+          }
+          if (isBefore(t.dueDate, todayStart)) {
+            overdueTasks.push(t);
+          }
+        }
+      }
+    });
+
+    let corpOpenedMonth = 0;
+    let pipelineValue = 0;
+
+    deals.forEach((d) => {
+      const c = d.createdAt;
+      if (c && !isBefore(c, monthStart)) {
+        corpOpenedMonth++;
+      }
+      pipelineValue += d.estimatedValue ?? 0;
+    });
 
     return {
       leadsToday,
@@ -177,8 +198,10 @@ export function DashboardHome() {
       hotSilent,
       awaitingPayment,
       overdueTasks,
+      openTasks,
     };
-  }, [leads, tasks, deals, activities, todayStart, todayEnd, weekAgo, monthStart]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leads, tasks, deals, activities, todayKey]);
 
   return (
     <div className="space-y-8">
@@ -325,11 +348,10 @@ export function DashboardHome() {
             <CardTitle className="text-base">Bugünkü görevler</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
-            {tasks.filter((t) => t.status === "open").length === 0 ? (
+            {stats.openTasks.length === 0 ? (
               <p className="text-muted-foreground">Açık görev yok.</p>
             ) : (
-              tasks
-                .filter((t) => t.status === "open")
+              stats.openTasks
                 .slice(0, 6)
                 .map((t) => (
                   <div
