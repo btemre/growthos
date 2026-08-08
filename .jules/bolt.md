@@ -1,0 +1,3 @@
+## 2025-02-18 - Unstable Object References in useMemo Dependency Arrays
+**Learning:** Using unstable object references (like `new Date()`) directly in a component body and passing them to `useMemo` dependency arrays causes the memoization to instantly invalidate on every single render. This renders the optimization completely ineffective and wastes CPU cycles.
+**Action:** Extract unstable date/object instantiations out of the dependency array and calculate them dynamically inside the hook, using a stable primitive (such as a formatted string `todayKey = format(new Date(), "yyyy-MM-dd")`) to determine when the hook should actually recompute.
