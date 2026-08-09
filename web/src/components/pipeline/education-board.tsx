@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, memo } from "react";
 import {
   DndContext,
   type DragEndEvent,
@@ -62,7 +62,8 @@ function StageColumn({
   );
 }
 
-function LeadCard({ lead, ownerLabel }: { lead: Lead; ownerLabel: string }) {
+// Memoize LeadCard to prevent unnecessary re-renders of unchanged cards in the board columns
+const LeadCard = memo(function LeadCard({ lead, ownerLabel }: { lead: Lead; ownerLabel: string }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({ id: lead.id });
 
@@ -113,7 +114,17 @@ function LeadCard({ lead, ownerLabel }: { lead: Lead; ownerLabel: string }) {
       </Card>
     </div>
   );
-}
+}, (prevProps, nextProps) => {
+  return (
+    prevProps.lead.id === nextProps.lead.id &&
+    prevProps.lead.educationStage === nextProps.lead.educationStage &&
+    prevProps.lead.name === nextProps.lead.name &&
+    prevProps.lead.score === nextProps.lead.score &&
+    prevProps.lead.ownerId === nextProps.lead.ownerId &&
+    prevProps.lead.lastContactAt?.getTime() === nextProps.lead.lastContactAt?.getTime() &&
+    prevProps.ownerLabel === nextProps.ownerLabel
+  );
+});
 
 export function EducationBoard() {
   const { firebaseUser, profile } = useAuth();

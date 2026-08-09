@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, memo } from "react";
 import {
   DndContext,
   type DragEndEvent,
@@ -64,7 +64,8 @@ function StageColumn({
   );
 }
 
-function DealCard({
+// Memoize DealCard to prevent unnecessary re-renders of unchanged cards in the board columns
+const DealCard = memo(function DealCard({
   deal,
   ownerLabel,
   showProposalLink,
@@ -122,7 +123,18 @@ function DealCard({
       </Card>
     </div>
   );
-}
+}, (prevProps, nextProps) => {
+  return (
+    prevProps.deal.id === nextProps.deal.id &&
+    prevProps.deal.stage === nextProps.deal.stage &&
+    prevProps.deal.title === nextProps.deal.title &&
+    prevProps.deal.companyName === nextProps.deal.companyName &&
+    prevProps.deal.serviceType === nextProps.deal.serviceType &&
+    prevProps.deal.ownerId === nextProps.deal.ownerId &&
+    prevProps.ownerLabel === nextProps.ownerLabel &&
+    prevProps.showProposalLink === nextProps.showProposalLink
+  );
+});
 
 export function CorporateBoard() {
   const { firebaseUser, profile } = useAuth();
