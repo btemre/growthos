@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, memo } from "react";
 import {
   endOfDay,
   format,
@@ -32,7 +32,7 @@ import { subscribeTasksForUser } from "@/lib/firestore/tasks";
 import { subscribeDealsForUser } from "@/lib/firestore/deals";
 import type { Activity, Deal, Lead, Task } from "@/types/models";
 
-function KpiCard({
+const KpiCard = memo(function KpiCard({
   title,
   value,
   hint,
@@ -67,7 +67,7 @@ function KpiCard({
     );
   }
   return inner;
-}
+});
 
 export function DashboardHome() {
   const { firebaseUser, profile } = useAuth();
@@ -98,12 +98,17 @@ export function DashboardHome() {
     };
   }, [uid, isAdmin]);
 
-  const todayStart = startOfDay(new Date());
-  const todayEnd = endOfDay(new Date());
-  const weekAgo = startOfDay(subDays(new Date(), 7));
-  const monthStart = startOfMonth(new Date());
+  // Performance Learning: Date objects created inside the component body have different references on every render,
+  // causing useMemo to unnecessarily re-evaluate on every render.
+  // We use a stable todayKey string dependency (e.g. "2025-08-10") and compute the Date objects inside useMemo.
+  const todayKey = format(new Date(), "yyyy-MM-dd");
 
   const stats = useMemo(() => {
+    const todayStart = startOfDay(new Date());
+    const todayEnd = endOfDay(new Date());
+    const weekAgo = startOfDay(subDays(new Date(), 7));
+    const monthStart = startOfMonth(new Date());
+
     const leadsToday = leads.filter((l) => {
       const c = l.createdAt;
       if (!c) return false;
@@ -178,7 +183,8 @@ export function DashboardHome() {
       awaitingPayment,
       overdueTasks,
     };
-  }, [leads, tasks, deals, activities, todayStart, todayEnd, weekAgo, monthStart]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leads, tasks, deals, activities, todayKey]);
 
   return (
     <div className="space-y-8">
