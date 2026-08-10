@@ -18,7 +18,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { Download } from "lucide-react";
+import { Download, Loader2Icon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -68,6 +68,7 @@ export function ReportsPageClient() {
   const [preset, setPreset] = useState<Preset>("week");
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
+  const [isExporting, setIsExporting] = useState(false);
 
   const [leads, setLeads] = useState<Lead[]>([]);
   const [deals, setDeals] = useState<Deal[]>([]);
@@ -318,6 +319,7 @@ export function ReportsPageClient() {
   }, [leadsInRange.length]);
 
   function exportCsv() {
+    setIsExporting(true);
     const rows: string[][] = [
       ["Rapor", "GOS"],
       ["Aralık başı", range.start.toISOString()],
@@ -344,6 +346,9 @@ export function ReportsPageClient() {
       `gos-rapor-${range.start.toISOString().slice(0, 10)}.csv`,
       rows
     );
+    setTimeout(() => {
+      setIsExporting(false);
+    }, 800);
   }
 
   const totalLeadsAll = leads.length;
@@ -397,9 +402,24 @@ export function ReportsPageClient() {
               </div>
             </>
           ) : null}
-          <Button type="button" size="sm" onClick={exportCsv}>
-            <Download className="mr-1 size-4" />
-            CSV indir ({csvRowCount} satır)
+          <Button
+            type="button"
+            size="sm"
+            onClick={exportCsv}
+            disabled={isExporting}
+            aria-label="Rapor verilerini CSV dosyası olarak indir"
+          >
+            {isExporting ? (
+              <>
+                <Loader2Icon className="mr-1 size-4 animate-spin" />
+                İndiriliyor...
+              </>
+            ) : (
+              <>
+                <Download className="mr-1 size-4" />
+                CSV indir ({csvRowCount} satır)
+              </>
+            )}
           </Button>
         </div>
         }
