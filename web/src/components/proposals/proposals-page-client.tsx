@@ -81,8 +81,12 @@ export function ProposalsPageClient() {
     return subscribeDealsForUser(db, uid, isAdmin, setDeals);
   }, [uid, isAdmin, allowed]);
 
-  const dealIds = useMemo(() => deals.map((d) => d.id), [deals]);
+  const { dealIds, dealIdsKey } = useMemo(() => {
+    const ids = deals.map((d) => d.id);
+    return { dealIds: ids, dealIdsKey: ids.join(",") };
+  }, [deals]);
 
+  // Subscribe to proposals with serialized dealIdsKey to prevent redundant triggers
   useEffect(() => {
     if (!uid || !allowed) return;
     const db = getFirebaseDb();
@@ -91,7 +95,8 @@ export function ProposalsPageClient() {
       { isAdmin, dealIds },
       setProposals
     );
-  }, [uid, isAdmin, allowed, dealIds.join(",")]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [uid, isAdmin, allowed, dealIdsKey]);
 
   const dealById = useMemo(() => {
     const m = new Map<string, Deal>();
@@ -99,11 +104,17 @@ export function ProposalsPageClient() {
     return m;
   }, [deals]);
 
-  useEffect(() => {
+  // Adjust state during render to avoid cascading synchronous state updates in useEffect
+  const [prevDealIdsKey, setPrevDealIdsKey] = useState("");
+  const [prevPreDealId, setPrevPreDealId] = useState("");
+
+  if (preDealId !== prevPreDealId || dealIdsKey !== prevDealIdsKey) {
+    setPrevPreDealId(preDealId);
+    setPrevDealIdsKey(dealIdsKey);
     if (preDealId && deals.some((d) => d.id === preDealId)) {
       setDealId(preDealId);
     }
-  }, [preDealId, deals]);
+  }
 
   function openCreate() {
     setEditing(null);
