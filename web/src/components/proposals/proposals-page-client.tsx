@@ -82,6 +82,7 @@ export function ProposalsPageClient() {
   }, [uid, isAdmin, allowed]);
 
   const dealIds = useMemo(() => deals.map((d) => d.id), [deals]);
+  const dealIdsKey = dealIds.join(",");
 
   useEffect(() => {
     if (!uid || !allowed) return;
@@ -91,7 +92,8 @@ export function ProposalsPageClient() {
       { isAdmin, dealIds },
       setProposals
     );
-  }, [uid, isAdmin, allowed, dealIds.join(",")]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [uid, isAdmin, allowed, dealIdsKey]);
 
   const dealById = useMemo(() => {
     const m = new Map<string, Deal>();
@@ -99,11 +101,16 @@ export function ProposalsPageClient() {
     return m;
   }, [deals]);
 
-  useEffect(() => {
+  const [prevPreDealId, setPrevPreDealId] = useState(preDealId);
+  const [prevDeals, setPrevDeals] = useState<Deal[]>(deals);
+
+  if (preDealId !== prevPreDealId || deals !== prevDeals) {
+    setPrevPreDealId(preDealId);
+    setPrevDeals(deals);
     if (preDealId && deals.some((d) => d.id === preDealId)) {
       setDealId(preDealId);
     }
-  }, [preDealId, deals]);
+  }
 
   function openCreate() {
     setEditing(null);
@@ -314,7 +321,7 @@ export function ProposalsPageClient() {
             ) : null}
             <div className="grid max-h-[60vh] gap-4 overflow-y-auto py-4 pr-1">
               <div className="space-y-2">
-                <Label>Fırsat (deal)</Label>
+                <Label htmlFor="proposal-deal">Fırsat (deal)</Label>
                 <Select
                   value={dealId}
                   onValueChange={(v) => {
@@ -322,7 +329,7 @@ export function ProposalsPageClient() {
                   }}
                   disabled={!!editing}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger id="proposal-deal">
                     <SelectValue placeholder="Seçin" />
                   </SelectTrigger>
                   <SelectContent>
@@ -335,23 +342,26 @@ export function ProposalsPageClient() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Teklif başlığı</Label>
+                <Label htmlFor="proposal-title">Teklif başlığı</Label>
                 <Input
+                  id="proposal-title"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   required
                 />
               </div>
               <div className="space-y-2">
-                <Label>Müşteri adı (isteğe bağlı)</Label>
+                <Label htmlFor="proposal-customer">Müşteri adı (isteğe bağlı)</Label>
                 <Input
+                  id="proposal-customer"
                   value={customerName}
                   onChange={(e) => setCustomerName(e.target.value)}
                 />
               </div>
               <div className="space-y-2">
-                <Label>Kapsam</Label>
+                <Label htmlFor="proposal-scope">Kapsam</Label>
                 <Textarea
+                  id="proposal-scope"
                   rows={4}
                   value={scope}
                   onChange={(e) => setScope(e.target.value)}
@@ -359,15 +369,17 @@ export function ProposalsPageClient() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Teslim / süre notu</Label>
+                <Label htmlFor="proposal-delivery">Teslim / süre notu</Label>
                 <Input
+                  id="proposal-delivery"
                   value={deliveryNote}
                   onChange={(e) => setDeliveryNote(e.target.value)}
                 />
               </div>
               <div className="space-y-2">
-                <Label>Opsiyonel modüller</Label>
+                <Label htmlFor="proposal-optional">Opsiyonel modüller</Label>
                 <Textarea
+                  id="proposal-optional"
                   rows={2}
                   value={optionalModules}
                   onChange={(e) => setOptionalModules(e.target.value)}
@@ -375,8 +387,9 @@ export function ProposalsPageClient() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <Label>Tutar (₺)</Label>
+                  <Label htmlFor="proposal-price">Tutar (₺)</Label>
                   <Input
+                    id="proposal-price"
                     type="number"
                     min={0}
                     step="0.01"
@@ -385,8 +398,9 @@ export function ProposalsPageClient() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Geçerlilik</Label>
+                  <Label htmlFor="proposal-valid">Geçerlilik</Label>
                   <Input
+                    id="proposal-valid"
                     type="date"
                     value={validUntil}
                     onChange={(e) => setValidUntil(e.target.value)}
@@ -394,12 +408,12 @@ export function ProposalsPageClient() {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label>Durum</Label>
+                <Label htmlFor="proposal-status">Durum</Label>
                 <Select
                   value={status}
                   onValueChange={(v) => v && setStatus(v as ProposalStatus)}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger id="proposal-status">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -413,8 +427,8 @@ export function ProposalsPageClient() {
               </div>
             </div>
             <DialogFooter>
-              <Button type="submit" disabled={busy}>
-                {busy ? "Kaydediliyor…" : "Kaydet"}
+              <Button type="submit" loading={busy}>
+                Kaydet
               </Button>
             </DialogFooter>
           </form>
