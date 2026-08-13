@@ -81,8 +81,13 @@ export function ProposalsPageClient() {
     return subscribeDealsForUser(db, uid, isAdmin, setDeals);
   }, [uid, isAdmin, allowed]);
 
-  const dealIds = useMemo(() => deals.map((d) => d.id), [deals]);
+  // Optimize: Combine dealIds map and key generation to avoid joins on every render
+  const { dealIds, dealIdsKey } = useMemo(() => {
+    const ids = deals.map((d) => d.id);
+    return { dealIds: ids, dealIdsKey: ids.join(",") };
+  }, [deals]);
 
+  // Optimize: Use stable dealIdsKey for effect dependency to prevent redundant subscriptions
   useEffect(() => {
     if (!uid || !allowed) return;
     const db = getFirebaseDb();
@@ -91,7 +96,8 @@ export function ProposalsPageClient() {
       { isAdmin, dealIds },
       setProposals
     );
-  }, [uid, isAdmin, allowed, dealIds.join(",")]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [uid, isAdmin, allowed, dealIdsKey]);
 
   const dealById = useMemo(() => {
     const m = new Map<string, Deal>();
@@ -99,11 +105,17 @@ export function ProposalsPageClient() {
     return m;
   }, [deals]);
 
-  useEffect(() => {
+  // Optimize: Avoid calling setState inside useEffect by adjusting state in render phase
+  const [prevPreDealId, setPrevPreDealId] = useState(preDealId);
+  const [prevDealIdsKey, setPrevDealIdsKey] = useState(dealIdsKey);
+
+  if (preDealId !== prevPreDealId || dealIdsKey !== prevDealIdsKey) {
+    setPrevPreDealId(preDealId);
+    setPrevDealIdsKey(dealIdsKey);
     if (preDealId && deals.some((d) => d.id === preDealId)) {
       setDealId(preDealId);
     }
-  }, [preDealId, deals]);
+  }
 
   function openCreate() {
     setEditing(null);
