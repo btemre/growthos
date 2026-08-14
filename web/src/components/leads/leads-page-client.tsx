@@ -159,8 +159,8 @@ export function LeadsPageClient() {
               {l.phone ? (
                 <a
                   href={`tel:${l.phone}`}
-                  aria-label="Ara"
-                  className="inline-flex size-8 items-center justify-center rounded-md hover:bg-muted"
+                  aria-label={`${l.name} kişisini telefonla ara`}
+                  className="inline-flex size-8 items-center justify-center rounded-md hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 >
                   <Phone className="size-4" />
                 </a>
@@ -170,8 +170,8 @@ export function LeadsPageClient() {
                   href={`https://wa.me/${(l.whatsapp ?? l.phone ?? "").replace(/\D/g, "")}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  aria-label="WhatsApp"
-                  className="inline-flex size-8 items-center justify-center rounded-md hover:bg-muted"
+                  aria-label={`${l.name} kişisine WhatsApp mesajı gönder`}
+                  className="inline-flex size-8 items-center justify-center rounded-md hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 >
                   <MessageCircle className="size-4" />
                 </a>
@@ -225,13 +225,14 @@ export function LeadsPageClient() {
           <CardTitle className="text-base">Filtreler</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2" role="group" aria-label="Hızlı filtreler">
             {presetButtons.map((p) => (
               <Button
                 key={p.id}
                 type="button"
                 size="sm"
                 variant={preset === p.id ? "default" : "outline"}
+                aria-pressed={preset === p.id}
                 onClick={() => setPreset(p.id)}
               >
                 {p.label}
@@ -250,7 +251,7 @@ export function LeadsPageClient() {
               value={typeFilter}
               onValueChange={(v) => setTypeFilter(v ?? "all")}
             >
-              <SelectTrigger className="md:w-44">
+              <SelectTrigger className="md:w-44" aria-label="Tür filtresi">
                 <SelectValue placeholder="Tür" />
               </SelectTrigger>
               <SelectContent>
@@ -267,7 +268,7 @@ export function LeadsPageClient() {
                 value={tagFilter}
                 onValueChange={(v) => setTagFilter(v ?? "all")}
               >
-                <SelectTrigger className="md:w-44">
+                <SelectTrigger className="md:w-44" aria-label="Etiket filtresi">
                   <SelectValue placeholder="Etiket" />
                 </SelectTrigger>
                 <SelectContent>
@@ -284,7 +285,7 @@ export function LeadsPageClient() {
               value={sourceFilter}
               onValueChange={(v) => setSourceFilter(v ?? "all")}
             >
-              <SelectTrigger className="md:w-44">
+              <SelectTrigger className="md:w-44" aria-label="Kaynak filtresi">
                 <SelectValue placeholder="Kaynak" />
               </SelectTrigger>
               <SelectContent>
