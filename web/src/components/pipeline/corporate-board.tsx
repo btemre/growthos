@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import {
   DndContext,
   type DragEndEvent,
@@ -64,65 +64,77 @@ function StageColumn({
   );
 }
 
-function DealCard({
-  deal,
-  ownerLabel,
-  showProposalLink,
-}: {
-  deal: Deal;
-  ownerLabel: string;
-  showProposalLink?: boolean;
-}) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } =
-    useDraggable({ id: deal.id });
+// Memoize DealCard to prevent re-rendering untouched deal cards on board state or drag updates
+const DealCard = memo(
+  function DealCard({
+    deal,
+    ownerLabel,
+    showProposalLink,
+  }: {
+    deal: Deal;
+    ownerLabel: string;
+    showProposalLink?: boolean;
+  }) {
+    const { attributes, listeners, setNodeRef, transform, isDragging } =
+      useDraggable({ id: deal.id });
 
-  const style = transform
-    ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` }
-    : undefined;
+    const style = transform
+      ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` }
+      : undefined;
 
-  return (
-    <div ref={setNodeRef} style={style} {...listeners} {...attributes}>
-      <Card
-        className={cn(
-          "cursor-grab border-border/80 shadow-sm active:cursor-grabbing",
-          isDragging && "opacity-60"
-        )}
-      >
-        <CardContent className="space-y-2 p-3 text-sm">
-          <Link
-            href={`/pipeline/corporate/${deal.id}`}
-            className="font-medium hover:underline"
-            onPointerDown={(e) => e.stopPropagation()}
-          >
-            {deal.title}
-          </Link>
-          <p className="text-xs text-muted-foreground">{deal.companyName}</p>
-          <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-            <Avatar className="size-5">
-              <AvatarFallback className="text-[9px]">
-                {ownerLabel.slice(0, 2).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            {ownerLabel}
-          </div>
-          <Badge variant="secondary" className="text-[10px]">
-            {LABELS.serviceType[deal.serviceType]}
-          </Badge>
-          {showProposalLink ? (
+    return (
+      <div ref={setNodeRef} style={style} {...listeners} {...attributes}>
+        <Card
+          className={cn(
+            "cursor-grab border-border/80 shadow-sm active:cursor-grabbing",
+            isDragging && "opacity-60"
+          )}
+        >
+          <CardContent className="space-y-2 p-3 text-sm">
             <Link
-              href={`/proposals?deal=${deal.id}`}
-              className="inline-block text-xs font-medium text-primary hover:underline"
+              href={`/pipeline/corporate/${deal.id}`}
+              className="font-medium hover:underline"
               onPointerDown={(e) => e.stopPropagation()}
-              onClick={(e) => e.stopPropagation()}
             >
-              Teklif →
+              {deal.title}
             </Link>
-          ) : null}
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
+            <p className="text-xs text-muted-foreground">{deal.companyName}</p>
+            <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+              <Avatar className="size-5">
+                <AvatarFallback className="text-[9px]">
+                  {ownerLabel.slice(0, 2).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              {ownerLabel}
+            </div>
+            <Badge variant="secondary" className="text-[10px]">
+              {LABELS.serviceType[deal.serviceType]}
+            </Badge>
+            {showProposalLink ? (
+              <Link
+                href={`/proposals?deal=${deal.id}`}
+                className="inline-block text-xs font-medium text-primary hover:underline"
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => e.stopPropagation()}
+              >
+                Teklif →
+              </Link>
+            ) : null}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  },
+  (prev, next) =>
+    prev.deal.id === next.deal.id &&
+    prev.deal.stage === next.deal.stage &&
+    prev.deal.title === next.deal.title &&
+    prev.deal.companyName === next.deal.companyName &&
+    prev.deal.serviceType === next.deal.serviceType &&
+    prev.deal.updatedAt?.getTime() === next.deal.updatedAt?.getTime() &&
+    prev.ownerLabel === next.ownerLabel &&
+    prev.showProposalLink === next.showProposalLink
+);
 
 export function CorporateBoard() {
   const { firebaseUser, profile } = useAuth();
