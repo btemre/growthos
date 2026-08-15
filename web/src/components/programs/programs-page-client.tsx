@@ -5,6 +5,7 @@ import Link from "next/link";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
 import { toast } from "sonner";
+import { Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -165,11 +166,16 @@ export function ProgramsPageClient() {
         }
       />
 
-      <div className="flex flex-wrap gap-2">
+      <div
+        className="flex flex-wrap gap-2"
+        role="group"
+        aria-label="Program durumu filtreleri"
+      >
         <Button
           type="button"
           size="sm"
           variant={statusFilter === "all" ? "default" : "outline"}
+          aria-pressed={statusFilter === "all"}
           onClick={() => setStatusFilter("all")}
         >
           Tümü
@@ -180,6 +186,7 @@ export function ProgramsPageClient() {
             type="button"
             size="sm"
             variant={statusFilter === s ? "default" : "outline"}
+            aria-pressed={statusFilter === s}
             onClick={() => setStatusFilter(s)}
           >
             {LABELS.programStatus[s]}
@@ -286,20 +293,21 @@ export function ProgramsPageClient() {
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="space-y-2">
-                <Label>Başlık</Label>
+                <Label htmlFor="program-title">Başlık</Label>
                 <Input
+                  id="program-title"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   required
                 />
               </div>
               <div className="space-y-2">
-                <Label>Tür</Label>
+                <Label htmlFor="program-type">Tür</Label>
                 <Select
                   value={programType}
                   onValueChange={(v) => v && setProgramType(v as ProgramType)}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger id="program-type">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -313,16 +321,18 @@ export function ProgramsPageClient() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <Label>Başlangıç</Label>
+                  <Label htmlFor="program-start-date">Başlangıç</Label>
                   <Input
+                    id="program-start-date"
                     type="date"
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Bitiş</Label>
+                  <Label htmlFor="program-end-date">Bitiş</Label>
                   <Input
+                    id="program-end-date"
                     type="date"
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
@@ -330,8 +340,9 @@ export function ProgramsPageClient() {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label>Fiyat (₺)</Label>
+                <Label htmlFor="program-price">Fiyat (₺)</Label>
                 <Input
+                  id="program-price"
                   type="number"
                   min={0}
                   step="0.01"
@@ -340,12 +351,12 @@ export function ProgramsPageClient() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Durum</Label>
+                <Label htmlFor="program-status">Durum</Label>
                 <Select
                   value={status}
                   onValueChange={(v) => v && setStatus(v as ProgramStatus)}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger id="program-status">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -358,8 +369,9 @@ export function ProgramsPageClient() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Notlar</Label>
+                <Label htmlFor="program-notes">Notlar</Label>
                 <Textarea
+                  id="program-notes"
                   rows={3}
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
@@ -368,6 +380,7 @@ export function ProgramsPageClient() {
             </div>
             <DialogFooter>
               <Button type="submit" disabled={busy}>
+                {busy && <Loader2 className="mr-2 size-4 animate-spin" />}
                 {busy ? "Kaydediliyor…" : "Kaydet"}
               </Button>
             </DialogFooter>
