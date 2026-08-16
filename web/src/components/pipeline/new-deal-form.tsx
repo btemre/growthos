@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Loader2Icon } from "lucide-react";
 import { toast } from "sonner";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -83,12 +84,12 @@ function DealFormFields({
         ) : null}
       </div>
       <div className="space-y-2">
-        <Label>Hizmet türü</Label>
+        <Label htmlFor="deal-service-type">Hizmet türü</Label>
         <Select
           value={serviceType}
           onValueChange={(v) => v && setValue("serviceType", v as ServiceType)}
         >
-          <SelectTrigger>
+          <SelectTrigger id="deal-service-type">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -110,7 +111,14 @@ function DealFormFields({
         />
       </div>
       <Button type="submit" disabled={busy} className="w-full">
-        {busy ? "Kaydediliyor…" : "Oluştur"}
+        {busy ? (
+          <>
+            <Loader2Icon className="size-4 animate-spin" />
+            Oluşturuluyor…
+          </>
+        ) : (
+          "Oluştur"
+        )}
       </Button>
     </form>
   );
