@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import {
   DndContext,
   type DragEndEvent,
@@ -62,58 +62,74 @@ function StageColumn({
   );
 }
 
-function LeadCard({ lead, ownerLabel }: { lead: Lead; ownerLabel: string }) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } =
-    useDraggable({ id: lead.id });
+/**
+ * LeadCard is memoized with a custom comparison function to prevent unnecessary
+ * card re-renders during pipeline drag-and-drop state updates or Firestore subscription re-fetches.
+ */
+const LeadCard = memo(
+  function LeadCard({ lead, ownerLabel }: { lead: Lead; ownerLabel: string }) {
+    const { attributes, listeners, setNodeRef, transform, isDragging } =
+      useDraggable({ id: lead.id });
 
-  const style = transform
-    ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` }
-    : undefined;
+    const style = transform
+      ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` }
+      : undefined;
 
-  return (
-    <div ref={setNodeRef} style={style} {...listeners} {...attributes}>
-      <Card
-        className={cn(
-          "cursor-grab border-border/80 shadow-sm active:cursor-grabbing",
-          isDragging && "opacity-60"
-        )}
-      >
-        <CardContent className="space-y-2 p-3 text-sm">
-          <Link
-            href={`/leads/${lead.id}`}
-            className="font-medium hover:underline"
-            onPointerDown={(e) => e.stopPropagation()}
-          >
-            {lead.name}
-          </Link>
-          <div className="flex flex-wrap items-center gap-1">
-            <StatusBadge tone={leadScoreTone(lead.score)} className="text-[10px]">
-              {lead.score}
-            </StatusBadge>
-            {lead.lastContactAt ? (
-              <span className="text-[10px] text-muted-foreground">
-                {formatDistanceToNow(lead.lastContactAt, {
-                  addSuffix: true,
-                  locale: tr,
-                })}
-              </span>
-            ) : (
-              <span className="text-[10px] text-muted-foreground">Temas yok</span>
-            )}
-          </div>
-          <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-            <Avatar className="size-5">
-              <AvatarFallback className="text-[9px]">
-                {ownerLabel.slice(0, 2).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            {ownerLabel}
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
+    return (
+      <div ref={setNodeRef} style={style} {...listeners} {...attributes}>
+        <Card
+          className={cn(
+            "cursor-grab border-border/80 shadow-sm active:cursor-grabbing",
+            isDragging && "opacity-60"
+          )}
+        >
+          <CardContent className="space-y-2 p-3 text-sm">
+            <Link
+              href={`/leads/${lead.id}`}
+              className="font-medium hover:underline"
+              onPointerDown={(e) => e.stopPropagation()}
+            >
+              {lead.name}
+            </Link>
+            <div className="flex flex-wrap items-center gap-1">
+              <StatusBadge tone={leadScoreTone(lead.score)} className="text-[10px]">
+                {lead.score}
+              </StatusBadge>
+              {lead.lastContactAt ? (
+                <span className="text-[10px] text-muted-foreground">
+                  {formatDistanceToNow(lead.lastContactAt, {
+                    addSuffix: true,
+                    locale: tr,
+                  })}
+                </span>
+              ) : (
+                <span className="text-[10px] text-muted-foreground">Temas yok</span>
+              )}
+            </div>
+            <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+              <Avatar className="size-5">
+                <AvatarFallback className="text-[9px]">
+                  {ownerLabel.slice(0, 2).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              {ownerLabel}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  },
+  (prevProps, nextProps) =>
+    prevProps.ownerLabel === nextProps.ownerLabel &&
+    prevProps.lead.id === nextProps.lead.id &&
+    prevProps.lead.name === nextProps.lead.name &&
+    prevProps.lead.score === nextProps.lead.score &&
+    prevProps.lead.type === nextProps.lead.type &&
+    prevProps.lead.educationStage === nextProps.lead.educationStage &&
+    prevProps.lead.ownerId === nextProps.lead.ownerId &&
+    prevProps.lead.lastContactAt?.getTime() === nextProps.lead.lastContactAt?.getTime() &&
+    prevProps.lead.updatedAt?.getTime() === nextProps.lead.updatedAt?.getTime()
+);
 
 export function EducationBoard() {
   const { firebaseUser, profile } = useAuth();
