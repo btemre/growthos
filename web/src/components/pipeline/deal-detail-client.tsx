@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { format, formatDistanceToNow } from "date-fns";
 import { tr } from "date-fns/locale";
+import { ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -160,9 +161,11 @@ export function DealDetailClient({ dealId }: { dealId: string }) {
                     href={company.website.startsWith("http") ? company.website : `https://${company.website}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-primary hover:underline"
+                    aria-label={`${company.website} (yeni sekmede açılır)`}
+                    className="inline-flex items-center gap-1 rounded-sm text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
-                    {company.website}
+                    <span>{company.website}</span>
+                    <ExternalLink className="size-3.5 shrink-0" aria-hidden="true" />
                   </a>
                 ) : null}
                 {company.notes ? (
