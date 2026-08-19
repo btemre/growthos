@@ -98,73 +98,76 @@ export function DashboardHome() {
     };
   }, [uid, isAdmin]);
 
-  const todayStart = startOfDay(new Date());
-  const todayEnd = endOfDay(new Date());
-  const weekAgo = startOfDay(subDays(new Date(), 7));
-  const monthStart = startOfMonth(new Date());
+  // Primitive todayKey prevents useMemo invalidation on every render from unstable Date object references
+  const todayKey = format(new Date(), "yyyy-MM-dd");
 
+  // Single-pass aggregations with stable memoization dependencies
   const stats = useMemo(() => {
-    const leadsToday = leads.filter((l) => {
-      const c = l.createdAt;
-      if (!c) return false;
-      return !isBefore(c, todayStart) && !isAfter(c, todayEnd);
-    }).length;
+    const todayStart = startOfDay(new Date());
+    const todayEnd = endOfDay(new Date());
+    const weekAgo = startOfDay(subDays(new Date(), 7));
+    const monthStart = startOfMonth(new Date());
+    const threeDaysAgo = subDays(new Date(), 3);
 
-    const callsToday = activities.filter((a) => {
-      if (a.activityType !== "phone_call") return false;
-      const d = a.activityDate;
-      if (!d) return false;
-      return !isBefore(d, todayStart) && !isAfter(d, todayEnd);
-    }).length;
+    let leadsToday = 0;
+    let enrolledThisMonth = 0;
+    let closedSalesWeek = 0;
+    const hotSilent: Lead[] = [];
+    const awaitingPayment: Lead[] = [];
 
-    const followUpsToday = tasks.filter(
-      (t) =>
-        t.status === "open" &&
-        t.dueDate &&
-        !isBefore(t.dueDate, todayStart) &&
-        !isAfter(t.dueDate, todayEnd)
-    ).length;
+    for (const l of leads) {
+      if (l.createdAt && !isBefore(l.createdAt, todayStart) && !isAfter(l.createdAt, todayEnd)) {
+        leadsToday++;
+      }
+      if (l.educationStage === "enrolled") {
+        if (l.updatedAt) {
+          if (!isBefore(l.updatedAt, monthStart)) enrolledThisMonth++;
+          if (!isBefore(l.updatedAt, weekAgo)) closedSalesWeek++;
+        }
+      } else if (l.educationStage === "awaiting_payment") {
+        awaitingPayment.push(l);
+      }
 
-    const enrolledThisMonth = leads.filter((l) => {
-      if (l.educationStage !== "enrolled") return false;
-      const u = l.updatedAt;
-      if (!u) return false;
-      return !isBefore(u, monthStart);
-    }).length;
+      if (l.type === "education_candidate" && l.score >= 50) {
+        if (!l.lastContactAt || isBefore(l.lastContactAt, threeDaysAgo)) {
+          hotSilent.push(l);
+        }
+      }
+    }
 
-    const closedSalesWeek = leads.filter((l) => {
-      if (l.educationStage !== "enrolled") return false;
-      const u = l.updatedAt;
-      if (!u) return false;
-      return !isBefore(u, weekAgo);
-    }).length;
+    let callsToday = 0;
+    for (const a of activities) {
+      if (a.activityType === "phone_call" && a.activityDate) {
+        if (!isBefore(a.activityDate, todayStart) && !isAfter(a.activityDate, todayEnd)) {
+          callsToday++;
+        }
+      }
+    }
 
-    const corpOpenedMonth = deals.filter((d) => {
-      const c = d.createdAt;
-      if (!c) return false;
-      return !isBefore(c, monthStart);
-    }).length;
+    let followUpsToday = 0;
+    const overdueTasks: Task[] = [];
+    const openTasks: Task[] = [];
+    for (const t of tasks) {
+      if (t.status === "open") {
+        openTasks.push(t);
+        if (t.dueDate) {
+          if (!isBefore(t.dueDate, todayStart) && !isAfter(t.dueDate, todayEnd)) {
+            followUpsToday++;
+          } else if (isBefore(t.dueDate, todayStart)) {
+            overdueTasks.push(t);
+          }
+        }
+      }
+    }
 
-    const pipelineValue = deals.reduce((acc, d) => acc + (d.estimatedValue ?? 0), 0);
-
-    const hotSilent = leads.filter((l) => {
-      if (l.type !== "education_candidate") return false;
-      if (l.score < 50) return false;
-      const last = l.lastContactAt;
-      if (!last) return true;
-      return isBefore(last, subDays(new Date(), 3));
-    });
-
-    const awaitingPayment = leads.filter(
-      (l) => l.educationStage === "awaiting_payment"
-    );
-
-    const overdueTasks = tasks.filter(
-      (t) =>
-        t.status === "open" &&
-        t.dueDate &&
-        isBefore(t.dueDate, todayStart)
-    );
+    let corpOpenedMonth = 0;
+    let pipelineValue = 0;
+    for (const d of deals) {
+      pipelineValue += d.estimatedValue ?? 0;
+      if (d.createdAt && !isBefore(d.createdAt, monthStart)) {
+        corpOpenedMonth++;
+      }
+    }
 
     return {
       leadsToday,
@@ -177,8 +180,10 @@ export function DashboardHome() {
       hotSilent,
       awaitingPayment,
       overdueTasks,
+      openTasks,
     };
-  }, [leads, tasks, deals, activities, todayStart, todayEnd, weekAgo, monthStart]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leads, tasks, deals, activities, todayKey]);
 
   return (
     <div className="space-y-8">
@@ -325,25 +330,22 @@ export function DashboardHome() {
             <CardTitle className="text-base">Bugünkü görevler</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
-            {tasks.filter((t) => t.status === "open").length === 0 ? (
+            {stats.openTasks.length === 0 ? (
               <p className="text-muted-foreground">Açık görev yok.</p>
             ) : (
-              tasks
-                .filter((t) => t.status === "open")
-                .slice(0, 6)
-                .map((t) => (
-                  <div
-                    key={t.id}
-                    className="flex items-center justify-between gap-2 rounded-md border border-border/60 bg-card/50 px-3 py-2"
-                  >
-                    <span className="truncate font-medium">{t.title}</span>
-                    <span className="shrink-0 text-xs text-muted-foreground">
-                      {t.dueDate
-                        ? format(t.dueDate, "d MMM", { locale: tr })
-                        : "—"}
-                    </span>
-                  </div>
-                ))
+              stats.openTasks.slice(0, 6).map((t) => (
+                <div
+                  key={t.id}
+                  className="flex items-center justify-between gap-2 rounded-md border border-border/60 bg-card/50 px-3 py-2"
+                >
+                  <span className="truncate font-medium">{t.title}</span>
+                  <span className="shrink-0 text-xs text-muted-foreground">
+                    {t.dueDate
+                      ? format(t.dueDate, "d MMM", { locale: tr })
+                      : "—"}
+                  </span>
+                </div>
+              ))
             )}
             <Link
               href="/tasks"
