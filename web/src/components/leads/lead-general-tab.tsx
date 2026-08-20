@@ -48,7 +48,7 @@ export function LeadGeneralTab({
         <CardContent className="grid gap-3 sm:grid-cols-2 text-sm">
           <div>
             <p className="text-muted-foreground">E-posta</p>
-            <p>{lead.email ?? "—"}</p>
+            <p className="font-medium truncate">{lead.email ?? "—"}</p>
             <Button
               type="button"
               variant="outline"
@@ -56,13 +56,18 @@ export function LeadGeneralTab({
               className="mt-2"
               disabled={!lead.email?.trim()}
               onClick={onOpenEmail}
+              aria-label={
+                lead.email
+                  ? `${lead.name} kişisine e-posta gönder (${lead.email})`
+                  : "E-posta gönder"
+              }
             >
               E-posta gönder
             </Button>
           </div>
           <div>
             <p className="text-muted-foreground">Telefon</p>
-            <p>{lead.phone ?? "—"}</p>
+            <p className="font-medium truncate">{lead.phone ?? "—"}</p>
             <Button
               type="button"
               variant="outline"
@@ -70,17 +75,22 @@ export function LeadGeneralTab({
               className="mt-2"
               disabled={!lead.phone?.trim() && !lead.whatsapp?.trim()}
               onClick={onOpenWhatsApp}
+              aria-label={
+                lead.phone || lead.whatsapp
+                  ? `${lead.name} kişisine WhatsApp mesajı gönder`
+                  : "WhatsApp gönder"
+              }
             >
               WhatsApp gönder
             </Button>
           </div>
           <div>
             <p className="text-muted-foreground">Şehir</p>
-            <p>{lead.city ?? "—"}</p>
+            <p className="font-medium">{lead.city ?? "—"}</p>
           </div>
           <div>
             <p className="text-muted-foreground">Son temas</p>
-            <p>
+            <p className="font-medium">
               {lead.lastContactAt
                 ? format(lead.lastContactAt, "d MMMM yyyy HH:mm", { locale: tr })
                 : "—"}
@@ -93,13 +103,18 @@ export function LeadGeneralTab({
           <CardHeader>
             <CardTitle className="text-base">Eğitim aşaması</CardTitle>
           </CardHeader>
-          <CardContent className="flex flex-wrap gap-2">
+          <CardContent
+            className="flex flex-wrap gap-2"
+            role="group"
+            aria-label="Eğitim aşaması seçimi"
+          >
             {EDUCATION_STAGES.map((s) => (
               <Button
                 key={s}
                 type="button"
                 size="sm"
                 variant={lead.educationStage === s ? "default" : "outline"}
+                aria-pressed={lead.educationStage === s}
                 onClick={() => onSaveStage(s)}
               >
                 {LABELS.educationStage[s]}
@@ -114,16 +129,22 @@ export function LeadGeneralTab({
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="space-y-2">
-            <Label>Lead skoru</Label>
+            <Label htmlFor="lead-score-input">Lead skoru</Label>
             <Input
+              id="lead-score-input"
               type="number"
               value={score}
               onChange={(e) => setScore(Number(e.target.value))}
             />
           </div>
           <div className="space-y-2">
-            <Label>Notlar</Label>
-            <Textarea rows={4} value={notes} onChange={(e) => setNotes(e.target.value)} />
+            <Label htmlFor="lead-notes-textarea">Notlar</Label>
+            <Textarea
+              id="lead-notes-textarea"
+              rows={4}
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+            />
           </div>
           <div className="flex flex-wrap gap-2">
             <Button type="button" onClick={onSave}>
