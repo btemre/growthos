@@ -296,21 +296,33 @@ export function ReportsPageClient() {
       .sort((a, b) => b.leadsNew + b.dealsWon - (a.leadsNew + a.dealsWon));
   }, [isAdmin, leadsInRange, dealsWonInRange, users]);
 
+  // Performance Optimization: Compute source counts in a single O(N) pass over leads,
+  // avoiding O(K * N) array filter allocations for each lead source in LEAD_SOURCES.
   const conversionBySource = useMemo(() => {
+    const countsMap = new Map<string, { total: number; enrolled: number }>();
+    leads.forEach((l) => {
+      const entry = countsMap.get(l.source) ?? { total: 0, enrolled: 0 };
+      entry.total += 1;
+      if (l.educationStage === "enrolled") {
+        entry.enrolled += 1;
+      }
+      countsMap.set(l.source, entry);
+    });
+
     const rows: { source: string; total: number; enrolled: number; pct: number }[] =
       [];
     LEAD_SOURCES.forEach((s) => {
-      const subset = leads.filter((l) => l.source === s);
-      const total = subset.length;
-      const en = subset.filter((l) => l.educationStage === "enrolled").length;
+      const entry = countsMap.get(s);
+      if (!entry || entry.total === 0) return;
       rows.push({
         source: LABELS.source[s],
-        total,
-        enrolled: en,
-        pct: total ? Math.round((en / total) * 100) : 0,
+        total: entry.total,
+        enrolled: entry.enrolled,
+        pct: Math.round((entry.enrolled / entry.total) * 100),
       });
     });
-    return rows.filter((r) => r.total > 0).sort((a, b) => b.pct - a.pct);
+
+    return rows.sort((a, b) => b.pct - a.pct);
   }, [leads]);
 
   const csvRowCount = useMemo(() => {
@@ -347,7 +359,12 @@ export function ReportsPageClient() {
   }
 
   const totalLeadsAll = leads.length;
-  const enrolledAll = leads.filter((l) => l.educationStage === "enrolled").length;
+  // Performance Optimization: Memoize overall enrolled count to avoid array filtering
+  // on every render (e.g. date preset toggles or custom input changes).
+  const enrolledAll = useMemo(
+    () => leads.filter((l) => l.educationStage === "enrolled").length,
+    [leads]
+  );
   const conversionAll = totalLeadsAll
     ? Math.round((enrolledAll / totalLeadsAll) * 100)
     : 0;
