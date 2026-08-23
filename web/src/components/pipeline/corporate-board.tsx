@@ -91,7 +91,8 @@ function DealCard({
         <CardContent className="space-y-2 p-3 text-sm">
           <Link
             href={`/pipeline/corporate/${deal.id}`}
-            className="font-medium hover:underline"
+            className="rounded-sm font-medium hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            aria-label={`${deal.title} fırsat detaylarını görüntüle`}
             onPointerDown={(e) => e.stopPropagation()}
           >
             {deal.title}
@@ -111,7 +112,8 @@ function DealCard({
           {showProposalLink ? (
             <Link
               href={`/proposals?deal=${deal.id}`}
-              className="inline-block text-xs font-medium text-primary hover:underline"
+              className="inline-block rounded-sm text-xs font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              aria-label={`${deal.title} fırsatı için teklif detayına git`}
               onPointerDown={(e) => e.stopPropagation()}
               onClick={(e) => e.stopPropagation()}
             >
@@ -207,7 +209,8 @@ export function CorporateBoard() {
             canManage ? (
               <Link
                 href="/pipeline/corporate/new"
-                className="text-sm font-medium text-primary hover:underline"
+                className="rounded-sm text-sm font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                aria-label="Yeni kurumsal fırsat ekle"
               >
                 + Yeni fırsat
               </Link>
