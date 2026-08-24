@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import {
   endOfDay,
   format,
@@ -32,7 +32,7 @@ import { subscribeTasksForUser } from "@/lib/firestore/tasks";
 import { subscribeDealsForUser } from "@/lib/firestore/deals";
 import type { Activity, Deal, Lead, Task } from "@/types/models";
 
-function KpiCard({
+const KpiCard = memo(function KpiCard({
   title,
   value,
   hint,
@@ -67,7 +67,7 @@ function KpiCard({
     );
   }
   return inner;
-}
+});
 
 export function DashboardHome() {
   const { firebaseUser, profile } = useAuth();
@@ -98,12 +98,20 @@ export function DashboardHome() {
     };
   }, [uid, isAdmin]);
 
-  const todayStart = startOfDay(new Date());
-  const todayEnd = endOfDay(new Date());
-  const weekAgo = startOfDay(subDays(new Date(), 7));
-  const monthStart = startOfMonth(new Date());
+  const todayKey = format(new Date(), "yyyy-MM-dd");
+
+  const openTasks = useMemo(
+    () => tasks.filter((t) => t.status === "open"),
+    [tasks]
+  );
 
   const stats = useMemo(() => {
+    const now = new Date();
+    const todayStart = startOfDay(now);
+    const todayEnd = endOfDay(now);
+    const weekAgo = startOfDay(subDays(now, 7));
+    const monthStart = startOfMonth(now);
+
     const leadsToday = leads.filter((l) => {
       const c = l.createdAt;
       if (!c) return false;
@@ -152,7 +160,7 @@ export function DashboardHome() {
       if (l.score < 50) return false;
       const last = l.lastContactAt;
       if (!last) return true;
-      return isBefore(last, subDays(new Date(), 3));
+      return isBefore(last, subDays(now, 3));
     });
 
     const awaitingPayment = leads.filter(
@@ -178,7 +186,8 @@ export function DashboardHome() {
       awaitingPayment,
       overdueTasks,
     };
-  }, [leads, tasks, deals, activities, todayStart, todayEnd, weekAgo, monthStart]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leads, tasks, deals, activities, todayKey]);
 
   return (
     <div className="space-y-8">
@@ -325,11 +334,10 @@ export function DashboardHome() {
             <CardTitle className="text-base">Bugünkü görevler</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
-            {tasks.filter((t) => t.status === "open").length === 0 ? (
+            {openTasks.length === 0 ? (
               <p className="text-muted-foreground">Açık görev yok.</p>
             ) : (
-              tasks
-                .filter((t) => t.status === "open")
+              openTasks
                 .slice(0, 6)
                 .map((t) => (
                   <div
