@@ -42,15 +42,17 @@ export function LeadDetailHeader({
           {lead.phone ? (
             <a
               href={`tel:${lead.phone}`}
-              className="inline-flex h-8 items-center rounded-md border px-3 text-sm hover:bg-muted"
+              aria-label={`${lead.name} kişisini ara: ${lead.phone}`}
+              className="inline-flex h-8 items-center rounded-md border px-3 text-sm hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
-              <Phone className="mr-1 size-3.5" />
+              <Phone className="mr-1 size-3.5" aria-hidden="true" />
               Ara
             </a>
           ) : null}
           <Link
             href="/tasks"
-            className="inline-flex h-8 items-center rounded-md border px-3 text-sm hover:bg-muted"
+            aria-label={`${lead.name} için görev ekle`}
+            className="inline-flex h-8 items-center rounded-md border px-3 text-sm hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             Görev ekle
           </Link>
