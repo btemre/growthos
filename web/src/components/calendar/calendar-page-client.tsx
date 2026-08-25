@@ -6,7 +6,6 @@ import {
   eachDayOfInterval,
   endOfMonth,
   format,
-  isSameDay,
   isSameMonth,
   startOfMonth,
   startOfWeek,
@@ -77,15 +76,31 @@ export function CalendarPageClient() {
     return list;
   }, [tasks, leads]);
 
-  const monthStart = startOfMonth(viewMonth);
-  const monthEnd = endOfMonth(viewMonth);
-  const gridStart = startOfWeek(monthStart, { weekStartsOn: 1 });
-  const gridEnd = startOfWeek(addDays(monthEnd, 6), { weekStartsOn: 1 });
-  const days = eachDayOfInterval({ start: gridStart, end: addDays(gridEnd, 6) });
+  // Pre-group events by "yyyy-MM-dd" and memoize calendar grid days array
+  // to avoid O(D * E) date comparisons during grid rendering.
+  const { eventsByDate, days } = useMemo(() => {
+    const monthStart = startOfMonth(viewMonth);
+    const monthEnd = endOfMonth(viewMonth);
+    const gridStart = startOfWeek(monthStart, { weekStartsOn: 1 });
+    const gridEnd = startOfWeek(addDays(monthEnd, 6), { weekStartsOn: 1 });
+    const daysList = eachDayOfInterval({ start: gridStart, end: addDays(gridEnd, 6) });
 
-  const selectedDayEvents = events.filter((e) =>
-    isSameDay(e.date, selectedDay)
-  );
+    const map = new Map<string, CalEvent[]>();
+    for (const e of events) {
+      const key = format(e.date, "yyyy-MM-dd");
+      const list = map.get(key);
+      if (list) {
+        list.push(e);
+      } else {
+        map.set(key, [e]);
+      }
+    }
+
+    return { eventsByDate: map, days: daysList };
+  }, [viewMonth, events]);
+
+  const selectedKey = format(selectedDay, "yyyy-MM-dd");
+  const selectedDayEvents = eventsByDate.get(selectedKey) ?? [];
 
   return (
     <div className="space-y-6">
@@ -129,9 +144,10 @@ export function CalendarPageClient() {
           </div>
           <div className="grid grid-cols-7 gap-1">
             {days.map((day) => {
-              const dayEvents = events.filter((e) => isSameDay(e.date, day));
+              const dayKey = format(day, "yyyy-MM-dd");
+              const dayEvents = eventsByDate.get(dayKey) ?? [];
               const inMonth = isSameMonth(day, viewMonth);
-              const selected = isSameDay(day, selectedDay);
+              const selected = dayKey === selectedKey;
               return (
                 <button
                   key={day.toISOString()}
