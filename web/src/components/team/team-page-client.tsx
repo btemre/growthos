@@ -13,6 +13,14 @@ import { subscribeDealsForUser } from "@/lib/firestore/deals";
 import { listUsers } from "@/lib/firestore/users";
 import type { AppUser, Deal, Lead, Task } from "@/types/models";
 
+// Stable default object to avoid re-allocating `{ leads: 0, openTasks: 0, deals: 0, pipeline: 0 }` during render iterations
+const DEFAULT_USER_STATS = {
+  leads: 0,
+  openTasks: 0,
+  deals: 0,
+  pipeline: 0,
+};
+
 export function TeamPageClient() {
   const { firebaseUser, profile } = useAuth();
   const [users, setUsers] = useState<AppUser[]>([]);
@@ -53,27 +61,44 @@ export function TeamPageClient() {
     };
   }, [uid, isAdmin]);
 
+  // Single-pass Map aggregation with inlined lookups to optimize metric computation across leads, tasks, and deals
   const byOwner = useMemo(() => {
-    const map = new Map<
-      string,
-      { leads: number; openTasks: number; deals: number; pipeline: number }
-    >();
-    const touch = (id: string) => {
-      if (!map.has(id))
-        map.set(id, { leads: 0, openTasks: 0, deals: 0, pipeline: 0 });
-      return map.get(id)!;
-    };
-    leads.forEach((l) => {
-      touch(l.ownerId).leads += 1;
-    });
-    tasks.forEach((t) => {
-      if (t.status === "open") touch(t.assignedTo).openTasks += 1;
-    });
-    deals.forEach((d) => {
-      const row = touch(d.ownerId);
+    type Stats = { leads: number; openTasks: number; deals: number; pipeline: number };
+    const map = new Map<string, Stats>();
+
+    for (let i = 0; i < leads.length; i++) {
+      const l = leads[i];
+      let row = map.get(l.ownerId);
+      if (!row) {
+        row = { leads: 0, openTasks: 0, deals: 0, pipeline: 0 };
+        map.set(l.ownerId, row);
+      }
+      row.leads += 1;
+    }
+
+    for (let i = 0; i < tasks.length; i++) {
+      const t = tasks[i];
+      if (t.status === "open") {
+        let row = map.get(t.assignedTo);
+        if (!row) {
+          row = { leads: 0, openTasks: 0, deals: 0, pipeline: 0 };
+          map.set(t.assignedTo, row);
+        }
+        row.openTasks += 1;
+      }
+    }
+
+    for (let i = 0; i < deals.length; i++) {
+      const d = deals[i];
+      let row = map.get(d.ownerId);
+      if (!row) {
+        row = { leads: 0, openTasks: 0, deals: 0, pipeline: 0 };
+        map.set(d.ownerId, row);
+      }
       row.deals += 1;
       row.pipeline += d.estimatedValue ?? 0;
-    });
+    }
+
     return map;
   }, [leads, tasks, deals]);
 
@@ -105,12 +130,7 @@ export function TeamPageClient() {
       ) : (
       <div className="grid gap-4 md:grid-cols-2">
         {users.map((u) => {
-          const s = byOwner.get(u.id) ?? {
-            leads: 0,
-            openTasks: 0,
-            deals: 0,
-            pipeline: 0,
-          };
+          const s = byOwner.get(u.id) ?? DEFAULT_USER_STATS;
           return (
             <Card key={u.id} className="border-border/80">
               <CardHeader>
