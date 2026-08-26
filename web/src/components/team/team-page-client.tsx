@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/shared/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { useAuth } from "@/contexts/auth-context";
@@ -16,6 +17,7 @@ import type { AppUser, Deal, Lead, Task } from "@/types/models";
 export function TeamPageClient() {
   const { firebaseUser, profile } = useAuth();
   const [users, setUsers] = useState<AppUser[]>([]);
+  const [loading, setLoading] = useState(true);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [deals, setDeals] = useState<Deal[]>([]);
@@ -33,6 +35,8 @@ export function TeamPageClient() {
         if (!cancelled) setUsers(u);
       } catch (e) {
         console.error(e);
+      } finally {
+        if (!cancelled) setLoading(false);
       }
     })();
     return () => {
@@ -97,7 +101,26 @@ export function TeamPageClient() {
         title="Personel performans özeti"
         description="Lead sahipliği, açık görev ve kurumsal pipeline katkısı."
       />
-      {users.length === 0 ? (
+      {loading ? (
+        <div className="grid gap-4 md:grid-cols-2">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Card key={i} className="border-border/80">
+              <CardHeader className="space-y-2">
+                <Skeleton className="h-5 w-32" />
+                <Skeleton className="h-3 w-48" />
+              </CardHeader>
+              <CardContent className="grid grid-cols-2 gap-3">
+                {Array.from({ length: 4 }).map((_, j) => (
+                  <div key={j} className="space-y-1">
+                    <Skeleton className="h-3 w-20" />
+                    <Skeleton className="h-6 w-12" />
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : users.length === 0 ? (
         <EmptyState
           title="Kullanıcı bulunamadı"
           description="Giriş yapan kullanıcılar Firestore'da profil olarak oluşturulur."
