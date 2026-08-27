@@ -4,9 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
 import Link from "next/link";
-import { ClipboardList, Sparkles } from "lucide-react";
+import { ClipboardList, Loader2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
-import { buttonVariants } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -36,7 +36,8 @@ export function GlobalRightRail() {
   const [quickTask, setQuickTask] = useState("");
   const [quickNote, setQuickNote] = useState("");
   const [quickLeadId, setQuickLeadId] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [taskBusy, setTaskBusy] = useState(false);
+  const [noteBusy, setNoteBusy] = useState(false);
   const uid = firebaseUser?.uid ?? "";
   const isAdmin = profile?.role === "admin";
 
@@ -76,7 +77,7 @@ export function GlobalRightRail() {
       toast.error("Lead seçin ve başlık girin");
       return;
     }
-    setBusy(true);
+    setTaskBusy(true);
     try {
       const db = getFirebaseDb();
       await createTask(db, {
@@ -93,7 +94,7 @@ export function GlobalRightRail() {
       console.error(e);
       toast.error("Oluşturulamadı");
     } finally {
-      setBusy(false);
+      setTaskBusy(false);
     }
   }
 
@@ -102,7 +103,7 @@ export function GlobalRightRail() {
       toast.error("Lead seçin ve not girin");
       return;
     }
-    setBusy(true);
+    setNoteBusy(true);
     try {
       const db = getFirebaseDb();
       await addActivity(db, {
@@ -118,7 +119,7 @@ export function GlobalRightRail() {
       console.error(e);
       toast.error("Kaydedilemedi");
     } finally {
-      setBusy(false);
+      setNoteBusy(false);
     }
   }
 
@@ -133,9 +134,9 @@ export function GlobalRightRail() {
         </CardHeader>
         <CardContent className="space-y-3 text-xs">
           <div className="space-y-1.5">
-            <Label>Lead</Label>
+            <Label htmlFor="quick-lead-select">Lead</Label>
             <Select value={quickLeadId} onValueChange={(v) => setQuickLeadId(v ?? "")}>
-              <SelectTrigger>
+              <SelectTrigger id="quick-lead-select">
                 <SelectValue placeholder="Lead seçin" />
               </SelectTrigger>
               <SelectContent>
@@ -155,14 +156,22 @@ export function GlobalRightRail() {
               onChange={(e) => setQuickTask(e.target.value)}
               placeholder="Bugün yapılacak…"
             />
-            <button
+            <Button
               type="button"
-              className={cn(buttonVariants({ size: "sm" }), "w-full")}
-              disabled={busy}
+              size="sm"
+              className="w-full"
+              disabled={taskBusy || noteBusy}
               onClick={() => void submitQuickTask()}
             >
-              Görev ekle
-            </button>
+              {taskBusy ? (
+                <>
+                  <Loader2 className="size-3.5 animate-spin" aria-hidden />
+                  <span>Ekleniyor…</span>
+                </>
+              ) : (
+                "Görev ekle"
+              )}
+            </Button>
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="quick-note">Hızlı not</Label>
@@ -173,14 +182,23 @@ export function GlobalRightRail() {
               onChange={(e) => setQuickNote(e.target.value)}
               placeholder="Kısa not…"
             />
-            <button
+            <Button
               type="button"
-              className={cn(buttonVariants({ size: "sm", variant: "outline" }), "w-full")}
-              disabled={busy}
+              size="sm"
+              variant="outline"
+              className="w-full"
+              disabled={taskBusy || noteBusy}
               onClick={() => void submitQuickNote()}
             >
-              Not kaydet
-            </button>
+              {noteBusy ? (
+                <>
+                  <Loader2 className="size-3.5 animate-spin" aria-hidden />
+                  <span>Kaydediliyor…</span>
+                </>
+              ) : (
+                "Not kaydet"
+              )}
+            </Button>
           </div>
         </CardContent>
       </Card>
