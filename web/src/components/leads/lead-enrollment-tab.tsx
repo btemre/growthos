@@ -21,7 +21,13 @@ export function LeadEnrollmentTab({
     <Card>
       <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 space-y-0">
         <CardTitle className="text-base">Program kayıtları</CardTitle>
-        <Link href="/programs" className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
+        <Link
+          href="/programs"
+          className={cn(
+            buttonVariants({ variant: "outline", size: "sm" }),
+            "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          )}
+        >
           Programlar
         </Link>
       </CardHeader>
@@ -52,7 +58,11 @@ export function LeadEnrollmentTab({
                 <Badge variant="outline">{LABELS.paymentStatus[en.paymentStatus]}</Badge>
                 <Link
                   href={`/programs/${en.programId}`}
-                  className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}
+                  aria-label={`${programTitleById.get(en.programId) ?? "Program"} detaylarına git`}
+                  className={cn(
+                    buttonVariants({ variant: "secondary", size: "sm" }),
+                    "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  )}
                 >
                   Programa git
                 </Link>
