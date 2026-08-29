@@ -6,7 +6,7 @@ import { doc, onSnapshot } from "firebase/firestore";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
 import { toast } from "sonner";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -388,14 +388,14 @@ export function ProgramDetailClient({ programId }: { programId: string }) {
             <div className="grid max-h-[65vh] gap-4 overflow-y-auto py-4 pr-1">
               {!editRow ? (
                 <div className="space-y-2">
-                  <Label>Lead</Label>
+                  <Label htmlFor="enrollment-lead">Lead</Label>
                   <Select
                     value={leadId}
                     onValueChange={(v) => {
                       if (v) setLeadId(v);
                     }}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger id="enrollment-lead">
                       <SelectValue placeholder="Lead seçin" />
                     </SelectTrigger>
                     <SelectContent>
@@ -422,14 +422,14 @@ export function ProgramDetailClient({ programId }: { programId: string }) {
               )}
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <Label>Ödeme durumu</Label>
+                  <Label htmlFor="enrollment-payment-status">Ödeme durumu</Label>
                   <Select
                     value={paymentStatus}
                     onValueChange={(v) =>
                       v && setPaymentStatus(v as PaymentStatus)
                     }
                   >
-                    <SelectTrigger>
+                    <SelectTrigger id="enrollment-payment-status">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -442,8 +442,9 @@ export function ProgramDetailClient({ programId }: { programId: string }) {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Tutar (₺)</Label>
+                  <Label htmlFor="enrollment-payment-amount">Tutar (₺)</Label>
                   <Input
+                    id="enrollment-payment-amount"
                     type="number"
                     min={0}
                     step="0.01"
@@ -454,16 +455,18 @@ export function ProgramDetailClient({ programId }: { programId: string }) {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <Label>Kayıt tarihi</Label>
+                  <Label htmlFor="enrollment-joined-at">Kayıt tarihi</Label>
                   <Input
+                    id="enrollment-joined-at"
                     type="date"
                     value={joinedAt}
                     onChange={(e) => setJoinedAt(e.target.value)}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Ödeme tarihi</Label>
+                  <Label htmlFor="enrollment-paid-at">Ödeme tarihi</Label>
                   <Input
+                    id="enrollment-paid-at"
                     type="date"
                     value={paidAt}
                     onChange={(e) => setPaidAt(e.target.value)}
@@ -471,38 +474,43 @@ export function ProgramDetailClient({ programId }: { programId: string }) {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label>Ödeme notu</Label>
+                <Label htmlFor="enrollment-payment-notes">Ödeme notu</Label>
                 <Textarea
+                  id="enrollment-payment-notes"
                   rows={2}
                   value={paymentNotes}
                   onChange={(e) => setPaymentNotes(e.target.value)}
                 />
               </div>
               <div className="space-y-2">
-                <Label>Teknik seviye</Label>
+                <Label htmlFor="enrollment-tech-level">Teknik seviye</Label>
                 <Input
+                  id="enrollment-tech-level"
                   value={techLevel}
                   onChange={(e) => setTechLevel(e.target.value)}
                 />
               </div>
               <div className="space-y-2">
-                <Label>Proje konusu</Label>
+                <Label htmlFor="enrollment-project-topic">Proje konusu</Label>
                 <Input
+                  id="enrollment-project-topic"
                   value={projectTopic}
                   onChange={(e) => setProjectTopic(e.target.value)}
                 />
               </div>
               <div className="space-y-2">
-                <Label>Mentor</Label>
+                <Label htmlFor="enrollment-mentor-name">Mentor</Label>
                 <Input
+                  id="enrollment-mentor-name"
                   value={mentorName}
                   onChange={(e) => setMentorName(e.target.value)}
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <Label>İlerleme %</Label>
+                  <Label htmlFor="enrollment-progress-percent">İlerleme %</Label>
                   <Input
+                    id="enrollment-progress-percent"
                     type="number"
                     min={0}
                     max={100}
@@ -511,8 +519,9 @@ export function ProgramDetailClient({ programId }: { programId: string }) {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Demo (tarih/saat)</Label>
+                  <Label htmlFor="enrollment-demo-at">Demo (tarih/saat)</Label>
                   <Input
+                    id="enrollment-demo-at"
                     type="datetime-local"
                     value={demoAt}
                     onChange={(e) => setDemoAt(e.target.value)}
@@ -520,15 +529,17 @@ export function ProgramDetailClient({ programId }: { programId: string }) {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label>GitHub</Label>
+                <Label htmlFor="enrollment-github-url">GitHub</Label>
                 <Input
+                  id="enrollment-github-url"
                   value={githubUrl}
                   onChange={(e) => setGithubUrl(e.target.value)}
                 />
               </div>
               <div className="space-y-2">
-                <Label>Deploy URL</Label>
+                <Label htmlFor="enrollment-deploy-url">Deploy URL</Label>
                 <Input
+                  id="enrollment-deploy-url"
                   value={deployUrl}
                   onChange={(e) => setDeployUrl(e.target.value)}
                 />
@@ -536,7 +547,14 @@ export function ProgramDetailClient({ programId }: { programId: string }) {
             </div>
             <DialogFooter>
               <Button type="submit" disabled={busy}>
-                {busy ? "Kaydediliyor…" : "Kaydet"}
+                {busy ? (
+                  <>
+                    <Loader2 className="mr-1.5 size-4 animate-spin" />
+                    Kaydediliyor…
+                  </>
+                ) : (
+                  "Kaydet"
+                )}
               </Button>
             </DialogFooter>
           </form>
