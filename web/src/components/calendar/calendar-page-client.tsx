@@ -132,18 +132,31 @@ export function CalendarPageClient() {
               const dayEvents = events.filter((e) => isSameDay(e.date, day));
               const inMonth = isSameMonth(day, viewMonth);
               const selected = isSameDay(day, selectedDay);
+              const formattedDate = format(day, "d MMMM yyyy", { locale: tr });
+              const eventCountText =
+                dayEvents.length > 0 ? `, ${dayEvents.length} olay` : "";
+              const selectedText = selected ? ", seçili gün" : "";
+              const ariaLabel = `${formattedDate}${eventCountText}${selectedText}`;
+
               return (
                 <button
                   key={day.toISOString()}
                   type="button"
                   onClick={() => setSelectedDay(day)}
-                  className={`min-h-16 rounded-md border p-1 text-left text-xs transition-colors ${
+                  aria-pressed={selected}
+                  aria-label={ariaLabel}
+                  className={`min-h-16 rounded-md border p-1 text-left text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
                     inMonth ? "bg-card" : "bg-muted/30 text-muted-foreground"
                   } ${selected ? "ring-2 ring-primary" : ""}`}
                 >
-                  <span className="font-medium">{format(day, "d")}</span>
+                  <span className="font-medium" aria-hidden="true">
+                    {format(day, "d")}
+                  </span>
                   {dayEvents.length > 0 ? (
-                    <span className="mt-0.5 block truncate text-[10px] text-primary">
+                    <span
+                      className="mt-0.5 block truncate text-[10px] text-primary"
+                      aria-hidden="true"
+                    >
                       {dayEvents.length} olay
                     </span>
                   ) : null}
