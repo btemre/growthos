@@ -14,6 +14,34 @@ import {
 import type { Task, TaskType } from "@/types/models";
 import { taskFromDoc } from "./serialize";
 
+export function subscribeTasksForRelated(
+  db: Firestore,
+  relatedType: Task["relatedType"],
+  relatedId: string,
+  onData: (tasks: Task[]) => void,
+  onError?: (e: Error) => void
+): Unsubscribe {
+  const q = query(
+    collection(db, "tasks"),
+    where("relatedType", "==", relatedType),
+    where("relatedId", "==", relatedId)
+  );
+  return onSnapshot(
+    q,
+    (snap) => {
+      const tasks = snap.docs.map((d) => taskFromDoc(d.id, d.data()));
+      // Sort client-side by createdAt desc to avoid composite index overhead
+      tasks.sort((a, b) => {
+        const tA = a.createdAt ? a.createdAt.getTime() : 0;
+        const tB = b.createdAt ? b.createdAt.getTime() : 0;
+        return tB - tA;
+      });
+      onData(tasks);
+    },
+    (err) => onError?.(err as Error)
+  );
+}
+
 export function subscribeTasksForUser(
   db: Firestore,
   uid: string,
