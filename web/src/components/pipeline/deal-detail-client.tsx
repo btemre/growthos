@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { format, formatDistanceToNow } from "date-fns";
 import { tr } from "date-fns/locale";
+import { ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -82,6 +83,7 @@ export function DealDetailClient({ dealId }: { dealId: string }) {
             <Link
               href="/pipeline/corporate"
               className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+              aria-label="Kurumsal pipeline sayfasına dön"
             >
               Pipeline
             </Link>
@@ -89,6 +91,7 @@ export function DealDetailClient({ dealId }: { dealId: string }) {
               <Link
                 href={`/proposals?deal=${deal.id}`}
                 className={cn(buttonVariants({ size: "sm" }))}
+                aria-label={`${deal.title} fırsatına ait teklifleri görüntüle`}
               >
                 Teklifler
               </Link>
@@ -160,9 +163,11 @@ export function DealDetailClient({ dealId }: { dealId: string }) {
                     href={company.website.startsWith("http") ? company.website : `https://${company.website}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-primary hover:underline"
+                    className="inline-flex items-center gap-1.5 rounded text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    aria-label={`${company.name} web sitesi: ${company.website} (yeni sekmede açılır)`}
                   >
-                    {company.website}
+                    <span>{company.website}</span>
+                    <ExternalLink className="size-3.5 shrink-0" aria-hidden="true" />
                   </a>
                 ) : null}
                 {company.notes ? (
@@ -188,6 +193,7 @@ export function DealDetailClient({ dealId }: { dealId: string }) {
             type="button"
             variant="outline"
             size="sm"
+            aria-label="Fırsat kimliğini (ID) panoya kopyala"
             onClick={() => {
               void navigator.clipboard.writeText(deal.id);
               toast.success("Deal ID kopyalandı");
@@ -198,6 +204,7 @@ export function DealDetailClient({ dealId }: { dealId: string }) {
           <Link
             href={`/tasks`}
             className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+            aria-label={`${deal.title} fırsatı için yeni görev oluştur`}
           >
             Görev oluştur
           </Link>
