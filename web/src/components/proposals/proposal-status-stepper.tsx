@@ -17,14 +17,15 @@ export function ProposalStatusStepper({ status }: { status: ProposalStatus }) {
   const currentIdx = FLOW.indexOf(status);
 
   return (
-    <div className="flex flex-wrap items-center gap-1 text-xs" aria-label="Teklif durumu">
+    <ol className="flex flex-wrap items-center gap-1 text-xs" aria-label="Teklif aşamaları">
       {FLOW.map((s, i) => {
         const active = s === status;
         const done = currentIdx > i;
         const isRejected = status === "rejected" && s === "rejected";
         return (
-          <div key={s} className="flex items-center gap-1">
+          <li key={s} className="flex items-center gap-1">
             <span
+              aria-current={active ? "step" : undefined}
               className={cn(
                 "rounded-full px-2 py-0.5 font-medium",
                 active && "bg-primary text-primary-foreground",
@@ -36,13 +37,13 @@ export function ProposalStatusStepper({ status }: { status: ProposalStatus }) {
               {LABELS.proposalStatus[s]}
             </span>
             {i < FLOW.length - 1 ? (
-              <span className="text-muted-foreground" aria-hidden>
+              <span className="text-muted-foreground" aria-hidden="true">
                 →
               </span>
             ) : null}
-          </div>
+          </li>
         );
       })}
-    </div>
+    </ol>
   );
 }
