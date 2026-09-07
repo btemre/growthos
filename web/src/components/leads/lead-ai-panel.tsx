@@ -1,5 +1,6 @@
 "use client";
 
+import { Loader2Icon } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -44,7 +45,14 @@ export function LeadAiPanel({
           Notlar ve son aktivitelere göre kısa özet ve önerilen aksiyon.
         </p>
         <Button type="button" disabled={aiBusy} onClick={onFetchInsight}>
-          {aiBusy ? "Çalışıyor…" : "Öneri üret"}
+          {aiBusy ? (
+            <>
+              <Loader2Icon className="size-4 animate-spin" aria-hidden="true" />
+              <span>Çalışıyor…</span>
+            </>
+          ) : (
+            "Öneri üret"
+          )}
         </Button>
         {aiBusy && !aiSummary ? (
           <div className="space-y-2">
@@ -80,12 +88,14 @@ export function LeadAiPanel({
               {aiAction}
             </p>
             <div className="flex flex-wrap items-center gap-2">
-              <Label className="text-xs">Görev tipi</Label>
+              <Label htmlFor="ai-task-type" className="text-xs">
+                Görev tipi
+              </Label>
               <Select
                 value={aiTaskType}
                 onValueChange={(v) => v && setAiTaskType(coerceTaskType(v))}
               >
-                <SelectTrigger className="w-[200px]">
+                <SelectTrigger id="ai-task-type" className="w-[200px]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
