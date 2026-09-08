@@ -14,6 +14,40 @@ import {
 import type { Task, TaskType } from "@/types/models";
 import { taskFromDoc } from "./serialize";
 
+/**
+ * Subscribe to tasks linked to a specific entity (e.g. lead/deal/company).
+ * Filters on Firestore server-side and sorts by `createdAt` descending on client-side
+ * to avoid requiring composite indexes in Firestore.
+ */
+export function subscribeTasksForRelated(
+  db: Firestore,
+  relatedType: Task["relatedType"],
+  relatedId: string,
+  onData: (tasks: Task[]) => void,
+  onError?: (e: Error) => void
+): Unsubscribe {
+  const col = collection(db, "tasks");
+  const q = query(
+    col,
+    where("relatedType", "==", relatedType),
+    where("relatedId", "==", relatedId)
+  );
+
+  return onSnapshot(
+    q,
+    (snap) => {
+      const rows = snap.docs.map((d) => taskFromDoc(d.id, d.data()));
+      rows.sort((a, b) => {
+        const tA = a.createdAt?.getTime() ?? 0;
+        const tB = b.createdAt?.getTime() ?? 0;
+        return tB - tA;
+      });
+      onData(rows);
+    },
+    (err) => onError?.(err as Error)
+  );
+}
+
 export function subscribeTasksForUser(
   db: Firestore,
   uid: string,
