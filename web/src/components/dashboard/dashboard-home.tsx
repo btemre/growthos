@@ -51,7 +51,7 @@ function KpiCard({
         <CardTitle className="text-sm font-medium text-muted-foreground">
           {title}
         </CardTitle>
-        <Icon className="size-4 text-primary/80" />
+        <Icon className="size-4 text-primary/80" aria-hidden="true" />
       </CardHeader>
       <CardContent>
         <div className="text-2xl font-semibold tracking-tight">{value}</div>
@@ -61,7 +61,7 @@ function KpiCard({
   );
   if (href) {
     return (
-      <Link href={href} className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-xl">
+      <Link href={href} aria-label={`${title}: ${value}`} className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-xl">
         {inner}
       </Link>
     );
@@ -238,7 +238,7 @@ export function DashboardHome() {
         <Card className="border-destructive/30 bg-destructive/5">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base text-destructive">
-              <Clock className="size-4" />
+              <Clock className="size-4" aria-hidden="true" />
               Geciken görevler
             </CardTitle>
           </CardHeader>
@@ -249,7 +249,11 @@ export function DashboardHome() {
               <ul className="space-y-1">
                 {stats.overdueTasks.slice(0, 5).map((t) => (
                   <li key={t.id}>
-                    <Link href="/tasks?filter=overdue" className="hover:underline">
+                    <Link
+                      href="/tasks?filter=overdue"
+                      className="rounded-xs hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      aria-label={`Geciken görev: ${t.title}`}
+                    >
                       {t.title}
                     </Link>
                   </li>
@@ -259,7 +263,7 @@ export function DashboardHome() {
             {stats.overdueTasks.length > 0 ? (
               <Link
                 href="/tasks?filter=overdue"
-                className="text-xs font-medium text-primary hover:underline"
+                className="rounded-xs text-xs font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 Tüm geciken görevler →
               </Link>
@@ -270,7 +274,7 @@ export function DashboardHome() {
         <Card className="border-[var(--semantic-warning)]/40 bg-[var(--semantic-warning)]/10">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
-              <AlertTriangle className="size-4 text-[var(--semantic-warning)]" />
+              <AlertTriangle className="size-4 text-[var(--semantic-warning)]" aria-hidden="true" />
               Ödeme bekliyor
             </CardTitle>
           </CardHeader>
@@ -280,7 +284,11 @@ export function DashboardHome() {
             ) : (
               stats.awaitingPayment.slice(0, 5).map((l) => (
                 <div key={l.id} className="flex items-center justify-between gap-2">
-                  <Link href={`/leads/${l.id}`} className="hover:underline">
+                  <Link
+                    href={`/leads/${l.id}`}
+                    className="rounded-xs hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    aria-label={`${l.name} detaylarını görüntüle`}
+                  >
                     {l.name}
                   </Link>
                   <StatusBadge tone="warning">Ödeme</StatusBadge>
@@ -293,7 +301,7 @@ export function DashboardHome() {
         <Card className="border-[var(--semantic-hot)]/30 bg-[var(--semantic-hot)]/5 lg:col-span-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
-              <Flame className="size-4 text-[var(--semantic-hot)]" />
+              <Flame className="size-4 text-[var(--semantic-hot)]" aria-hidden="true" />
               Sessiz sıcak lead (3+ gün)
             </CardTitle>
           </CardHeader>
@@ -306,7 +314,8 @@ export function DashboardHome() {
                   <li key={l.id}>
                     <Link
                       href={`/leads/${l.id}`}
-                      className="font-medium hover:underline"
+                      className="rounded-xs font-medium hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      aria-label={`${l.name} detaylarını görüntüle (skor: ${l.score})`}
                     >
                       {l.name}
                     </Link>
@@ -347,7 +356,7 @@ export function DashboardHome() {
             )}
             <Link
               href="/tasks"
-              className="inline-block pt-2 text-xs font-medium text-primary hover:underline"
+              className="inline-block pt-2 rounded-xs text-xs font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               Tüm görevler →
             </Link>
