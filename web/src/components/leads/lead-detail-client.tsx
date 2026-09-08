@@ -14,7 +14,7 @@ import { useUserDirectory } from "@/hooks/use-user-directory";
 import { TASK_TYPES } from "@/lib/constants";
 import { getFirebaseDb } from "@/lib/firebase/client";
 import { addActivity, subscribeActivitiesForRelated } from "@/lib/firestore/activities";
-import { subscribeTasksForUser, createTask, completeTask } from "@/lib/firestore/tasks";
+import { subscribeTasksForRelated, createTask, completeTask } from "@/lib/firestore/tasks";
 import { subscribeEnrollmentsByLead } from "@/lib/firestore/enrollments";
 import { updateLead } from "@/lib/firestore/leads";
 import { subscribePrograms } from "@/lib/firestore/programs";
@@ -118,11 +118,8 @@ export function LeadDetailClient({ leadId }: { leadId: string }) {
   useEffect(() => {
     if (!uid) return;
     const db = getFirebaseDb();
-    const unsub = subscribeTasksForUser(db, uid, isAdmin, (all) => {
-      setTasks(all.filter((t) => t.relatedType === "lead" && t.relatedId === leadId));
-    });
-    return () => unsub();
-  }, [uid, isAdmin, leadId]);
+    return subscribeTasksForRelated(db, "lead", leadId, setTasks);
+  }, [uid, leadId]);
 
   useEffect(() => {
     if (!uid) return;
