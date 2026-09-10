@@ -18,7 +18,11 @@ function LeadRouteHint({ leadId }: { leadId: string }) {
         <p>Hızlı görev ve not için aşağıdaki panelde bu lead&apos;i seçin.</p>
         <Link
           href={`/leads/${leadId}`}
-          className={cn(buttonVariants({ variant: "outline", size: "sm" }), "w-full")}
+          aria-label="Lead detay sayfasına git"
+          className={cn(
+            buttonVariants({ variant: "outline", size: "sm" }),
+            "w-full focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          )}
         >
           Lead detayına git
         </Link>
@@ -50,7 +54,7 @@ export function RouteRightRail() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-sm">
-              <UserSearch className="size-4" />
+              <UserSearch className="size-4" aria-hidden="true" />
               Lead listesi
             </CardTitle>
           </CardHeader>
@@ -64,7 +68,7 @@ export function RouteRightRail() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-sm">
-              <ClipboardList className="size-4" />
+              <ClipboardList className="size-4" aria-hidden="true" />
               Görevler
             </CardTitle>
           </CardHeader>
