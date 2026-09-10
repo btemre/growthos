@@ -13,7 +13,7 @@ export function DashboardRightRail() {
       <Card className="border-primary/20 bg-primary/5">
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-            <Sparkles className="size-4 text-primary" />
+            <Sparkles className="size-4 text-primary" aria-hidden="true" />
             Hızlı hatırlatma
           </CardTitle>
         </CardHeader>
@@ -29,12 +29,13 @@ export function DashboardRightRail() {
         </p>
         <Link
           href="/tasks"
+          aria-label="Görev listesi sayfasına git"
           className={cn(
             buttonVariants({ variant: "outline", size: "sm" }),
-            "w-full justify-start"
+            "w-full justify-start focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           )}
         >
-          <ClipboardList className="mr-2 size-4" />
+          <ClipboardList className="mr-2 size-4" aria-hidden="true" />
           Görev listesi
         </Link>
       </div>
