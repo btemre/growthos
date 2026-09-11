@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, memo } from "react";
 import {
   DndContext,
   type DragEndEvent,
@@ -64,7 +64,8 @@ function StageColumn({
   );
 }
 
-function DealCard({
+// Memoized DealCard to prevent unnecessary re-renders when other cards in the Kanban board change
+const DealCard = memo(function DealCard({
   deal,
   ownerLabel,
   showProposalLink,
@@ -122,7 +123,7 @@ function DealCard({
       </Card>
     </div>
   );
-}
+});
 
 export function CorporateBoard() {
   const { firebaseUser, profile } = useAuth();
@@ -140,13 +141,15 @@ export function CorporateBoard() {
     return subscribeDealsForUser(db, uid, isAdmin, setDeals);
   }, [uid, isAdmin]);
 
+  // Aggregate deals and total estimated values per stage in a single pass to eliminate O(S * N) recalculations during render
   const byStage = useMemo(() => {
-    const map = new Map<DealStage, Deal[]>();
-    CORPORATE_DEAL_STAGES.forEach((s) => map.set(s, []));
+    const map = new Map<DealStage, { list: Deal[]; totalValue: number }>();
+    CORPORATE_DEAL_STAGES.forEach((s) => map.set(s, { list: [], totalValue: 0 }));
     deals.forEach((d) => {
-      const list = map.get(d.stage) ?? [];
-      list.push(d);
-      map.set(d.stage, list);
+      const entry = map.get(d.stage) ?? { list: [], totalValue: 0 };
+      entry.list.push(d);
+      entry.totalValue += d.estimatedValue ?? 0;
+      map.set(d.stage, entry);
     });
     return map;
   }, [deals]);
@@ -217,27 +220,23 @@ export function CorporateBoard() {
         <div className="w-full overflow-x-auto pb-2">
           <div className="flex min-w-min gap-3 pb-2">
             {CORPORATE_DEAL_STAGES.map((stage) => {
-              const list = byStage.get(stage) ?? [];
-              const totalValue = list.reduce(
-                (acc, d) => acc + (d.estimatedValue ?? 0),
-                0
-              );
+              const entry = byStage.get(stage) ?? { list: [], totalValue: 0 };
               return (
-              <StageColumn
-                key={stage}
-                stage={stage}
-                count={list.length}
-                totalValue={totalValue}
-              >
-                {list.map((deal) => (
-                  <DealCard
-                    key={deal.id}
-                    deal={deal}
-                    ownerLabel={resolveOwner(deal.ownerId, uid)}
-                    showProposalLink={canManage}
-                  />
-                ))}
-              </StageColumn>
+                <StageColumn
+                  key={stage}
+                  stage={stage}
+                  count={entry.list.length}
+                  totalValue={entry.totalValue}
+                >
+                  {entry.list.map((deal) => (
+                    <DealCard
+                      key={deal.id}
+                      deal={deal}
+                      ownerLabel={resolveOwner(deal.ownerId, uid)}
+                      showProposalLink={canManage}
+                    />
+                  ))}
+                </StageColumn>
               );
             })}
           </div>
