@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, memo } from "react";
 import {
   DndContext,
   type DragEndEvent,
@@ -62,7 +62,14 @@ function StageColumn({
   );
 }
 
-function LeadCard({ lead, ownerLabel }: { lead: Lead; ownerLabel: string }) {
+// Memoized LeadCard to prevent unnecessary re-renders when other cards in the Kanban board change
+const LeadCard = memo(function LeadCard({
+  lead,
+  ownerLabel,
+}: {
+  lead: Lead;
+  ownerLabel: string;
+}) {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({ id: lead.id });
 
@@ -113,7 +120,7 @@ function LeadCard({ lead, ownerLabel }: { lead: Lead; ownerLabel: string }) {
       </Card>
     </div>
   );
-}
+});
 
 export function EducationBoard() {
   const { firebaseUser, profile } = useAuth();
