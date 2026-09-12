@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { format, formatDistanceToNow } from "date-fns";
 import { tr } from "date-fns/locale";
+import { CheckIcon, CopyIcon, PlusIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -25,6 +26,7 @@ export function DealDetailClient({ dealId }: { dealId: string }) {
   const [deal, setDeal] = useState<Deal | null>(null);
   const [company, setCompany] = useState<Company | null>(null);
   const [loading, setLoading] = useState(true);
+  const [copied, setCopied] = useState(false);
   const uid = firebaseUser?.uid ?? "";
   const isAdmin = profile?.role === "admin";
   const { resolveOwner } = useUserDirectory(isAdmin);
@@ -81,14 +83,22 @@ export function DealDetailClient({ dealId }: { dealId: string }) {
           <div className="flex flex-wrap gap-2">
             <Link
               href="/pipeline/corporate"
-              className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+              className={cn(
+                buttonVariants({ variant: "outline", size: "sm" }),
+                "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              )}
+              aria-label="Kurumsal pipeline listesine dön"
             >
               Pipeline
             </Link>
             {canManage ? (
               <Link
                 href={`/proposals?deal=${deal.id}`}
-                className={cn(buttonVariants({ size: "sm" }))}
+                className={cn(
+                  buttonVariants({ size: "sm" }),
+                  "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                )}
+                aria-label={`${deal.title} için teklifleri görüntüle`}
               >
                 Teklifler
               </Link>
@@ -190,15 +200,29 @@ export function DealDetailClient({ dealId }: { dealId: string }) {
             size="sm"
             onClick={() => {
               void navigator.clipboard.writeText(deal.id);
+              setCopied(true);
               toast.success("Deal ID kopyalandı");
+              setTimeout(() => setCopied(false), 2000);
             }}
+            aria-label="Fırsat kimliğini panoya kopyala"
+            className="focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
-            ID kopyala
+            {copied ? (
+              <CheckIcon className="size-4 text-emerald-600" aria-hidden="true" />
+            ) : (
+              <CopyIcon className="size-4" aria-hidden="true" />
+            )}
+            {copied ? "Kopyalandı" : "ID kopyala"}
           </Button>
           <Link
-            href={`/tasks`}
-            className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+            href="/tasks"
+            className={cn(
+              buttonVariants({ variant: "outline", size: "sm" }),
+              "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            )}
+            aria-label={`${deal.title} için görev oluştur`}
           >
+            <PlusIcon className="size-4" aria-hidden="true" />
             Görev oluştur
           </Link>
         </CardContent>
