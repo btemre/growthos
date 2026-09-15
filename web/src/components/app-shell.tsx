@@ -103,6 +103,7 @@ export function AppShell({
             size="icon"
             className="lg:hidden"
             onClick={() => setMobileOpen(false)}
+            aria-label="Menüyü kapat"
           >
             <X className="size-4" />
           </Button>
@@ -118,8 +119,9 @@ export function AppShell({
                   key={item.href}
                   href={item.href}
                   onClick={() => setMobileOpen(false)}
+                  aria-current={active ? "page" : undefined}
                   className={cn(
-                    "flex items-center gap-2 rounded-md px-2.5 py-2 text-sm transition-colors",
+                    "flex items-center gap-2 rounded-md px-2.5 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-1",
                     active
                       ? "bg-sidebar-accent text-sidebar-accent-foreground"
                       : "text-sidebar-foreground/80 hover:bg-sidebar-accent/60"
