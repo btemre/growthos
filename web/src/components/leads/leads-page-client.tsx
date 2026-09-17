@@ -12,7 +12,7 @@ import {
   type ColumnDef,
   type SortingState,
 } from "@tanstack/react-table";
-import { ArrowUpDown, MessageCircle, Phone } from "lucide-react";
+import { ArrowUpDown, MessageCircle, Phone, Search, X } from "lucide-react";
 import { format, isBefore, startOfDay } from "date-fns";
 import { tr } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
@@ -239,13 +239,29 @@ export function LeadsPageClient() {
             ))}
           </div>
           <div className="flex flex-col gap-3 md:flex-row md:flex-wrap">
-            <Input
-              placeholder="Ara (isim, e-posta, telefon)…"
-              value={globalFilter}
-              onChange={(e) => setGlobalFilter(e.target.value)}
-              className="md:max-w-xs"
-              aria-label="Lead ara"
-            />
+            <div className="relative flex-1 md:max-w-xs">
+              <Search
+                className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+                aria-hidden="true"
+              />
+              <Input
+                placeholder="Ara (isim, e-posta, telefon)…"
+                value={globalFilter}
+                onChange={(e) => setGlobalFilter(e.target.value)}
+                className={`pl-8 ${globalFilter ? "pr-8" : ""}`}
+                aria-label="Lead ara"
+              />
+              {globalFilter ? (
+                <button
+                  type="button"
+                  onClick={() => setGlobalFilter("")}
+                  aria-label="Aramayı temizle"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-sm p-0.5 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <X className="size-4" aria-hidden="true" />
+                </button>
+              ) : null}
+            </div>
             <Select
               value={typeFilter}
               onValueChange={(v) => setTypeFilter(v ?? "all")}
