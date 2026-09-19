@@ -1,5 +1,6 @@
 "use client";
 
+import { Loader2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -55,6 +56,9 @@ export function ConfirmDialog({
             disabled={busy}
             onClick={() => void onConfirm()}
           >
+            {busy ? (
+              <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+            ) : null}
             {confirmLabel}
           </Button>
         </DialogFooter>
