@@ -81,7 +81,8 @@ function LeadCard({ lead, ownerLabel }: { lead: Lead; ownerLabel: string }) {
         <CardContent className="space-y-2 p-3 text-sm">
           <Link
             href={`/leads/${lead.id}`}
-            className="font-medium hover:underline"
+            className="font-medium hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-sm"
+            aria-label={`${lead.name} lead detayına git`}
             onPointerDown={(e) => e.stopPropagation()}
           >
             {lead.name}
