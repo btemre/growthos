@@ -14,6 +14,7 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAuth } from "@/contexts/auth-context";
@@ -91,7 +92,8 @@ function DealCard({
         <CardContent className="space-y-2 p-3 text-sm">
           <Link
             href={`/pipeline/corporate/${deal.id}`}
-            className="font-medium hover:underline"
+            className="font-medium hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-sm"
+            aria-label={`${deal.title} fırsat detayına git`}
             onPointerDown={(e) => e.stopPropagation()}
           >
             {deal.title}
@@ -111,7 +113,8 @@ function DealCard({
           {showProposalLink ? (
             <Link
               href={`/proposals?deal=${deal.id}`}
-              className="inline-block text-xs font-medium text-primary hover:underline"
+              className="inline-block text-xs font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-sm"
+              aria-label={`${deal.title} tekliflerine git`}
               onPointerDown={(e) => e.stopPropagation()}
               onClick={(e) => e.stopPropagation()}
             >
@@ -207,7 +210,8 @@ export function CorporateBoard() {
             canManage ? (
               <Link
                 href="/pipeline/corporate/new"
-                className="text-sm font-medium text-primary hover:underline"
+                className={cn(buttonVariants({ size: "sm" }))}
+                aria-label="Yeni kurumsal fırsat ekle"
               >
                 + Yeni fırsat
               </Link>
