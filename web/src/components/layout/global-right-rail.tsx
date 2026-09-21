@@ -4,9 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
 import Link from "next/link";
-import { ClipboardList, Sparkles } from "lucide-react";
+import { ClipboardList, Loader2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
-import { buttonVariants } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -127,15 +127,15 @@ export function GlobalRightRail() {
       <Card className="border-primary/20 bg-primary/5">
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-            <Sparkles className="size-4 text-primary" />
+            <Sparkles className="size-4 text-primary" aria-hidden="true" />
             Hızlı işlemler
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3 text-xs">
           <div className="space-y-1.5">
-            <Label>Lead</Label>
+            <Label htmlFor="quick-lead">Lead</Label>
             <Select value={quickLeadId} onValueChange={(v) => setQuickLeadId(v ?? "")}>
-              <SelectTrigger>
+              <SelectTrigger id="quick-lead" aria-label="Hızlı işlem için lead seçin">
                 <SelectValue placeholder="Lead seçin" />
               </SelectTrigger>
               <SelectContent>
@@ -155,14 +155,22 @@ export function GlobalRightRail() {
               onChange={(e) => setQuickTask(e.target.value)}
               placeholder="Bugün yapılacak…"
             />
-            <button
+            <Button
               type="button"
-              className={cn(buttonVariants({ size: "sm" }), "w-full")}
+              size="sm"
+              className="w-full"
               disabled={busy}
               onClick={() => void submitQuickTask()}
             >
-              Görev ekle
-            </button>
+              {busy ? (
+                <>
+                  <Loader2 className="mr-2 size-3.5 animate-spin" aria-hidden="true" />
+                  Ekleniyor...
+                </>
+              ) : (
+                "Görev ekle"
+              )}
+            </Button>
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="quick-note">Hızlı not</Label>
@@ -173,14 +181,23 @@ export function GlobalRightRail() {
               onChange={(e) => setQuickNote(e.target.value)}
               placeholder="Kısa not…"
             />
-            <button
+            <Button
               type="button"
-              className={cn(buttonVariants({ size: "sm", variant: "outline" }), "w-full")}
+              size="sm"
+              variant="outline"
+              className="w-full"
               disabled={busy}
               onClick={() => void submitQuickNote()}
             >
-              Not kaydet
-            </button>
+              {busy ? (
+                <>
+                  <Loader2 className="mr-2 size-3.5 animate-spin" aria-hidden="true" />
+                  Kaydediliyor...
+                </>
+              ) : (
+                "Not kaydet"
+              )}
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -237,7 +254,7 @@ export function GlobalRightRail() {
           "w-full justify-start"
         )}
       >
-        <ClipboardList className="mr-2 size-4" />
+        <ClipboardList className="mr-2 size-4" aria-hidden="true" />
         Görev listesi
       </Link>
     </div>
