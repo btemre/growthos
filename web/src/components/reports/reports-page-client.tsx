@@ -141,6 +141,7 @@ export function ReportsPageClient() {
   }, [uid, isAdmin]);
 
   const dealIds = useMemo(() => deals.map((d) => d.id), [deals]);
+  const dealIdsKey = dealIds.join(",");
 
   useEffect(() => {
     if (!uid || !showCorporate) return;
@@ -150,7 +151,8 @@ export function ReportsPageClient() {
       { isAdmin, dealIds },
       setProposals
     );
-  }, [uid, isAdmin, showCorporate, dealIds.join(",")]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [uid, isAdmin, showCorporate, dealIdsKey]);
 
   useEffect(() => {
     if (!uid || !showEnrollmentsBlock) return;
@@ -296,21 +298,34 @@ export function ReportsPageClient() {
       .sort((a, b) => b.leadsNew + b.dealsWon - (a.leadsNew + a.dealsWon));
   }, [isAdmin, leadsInRange, dealsWonInRange, users]);
 
+  // Single-pass Map aggregation O(N) instead of O(S * N) nested array filtering per source
   const conversionBySource = useMemo(() => {
-    const rows: { source: string; total: number; enrolled: number; pct: number }[] =
-      [];
-    LEAD_SOURCES.forEach((s) => {
-      const subset = leads.filter((l) => l.source === s);
-      const total = subset.length;
-      const en = subset.filter((l) => l.educationStage === "enrolled").length;
-      rows.push({
-        source: LABELS.source[s],
-        total,
-        enrolled: en,
-        pct: total ? Math.round((en / total) * 100) : 0,
-      });
-    });
-    return rows.filter((r) => r.total > 0).sort((a, b) => b.pct - a.pct);
+    const counts = new Map<string, { total: number; enrolled: number }>();
+    for (const l of leads) {
+      let entry = counts.get(l.source);
+      if (!entry) {
+        entry = { total: 0, enrolled: 0 };
+        counts.set(l.source, entry);
+      }
+      entry.total += 1;
+      if (l.educationStage === "enrolled") {
+        entry.enrolled += 1;
+      }
+    }
+
+    const rows: { source: string; total: number; enrolled: number; pct: number }[] = [];
+    for (const sourceKey of LEAD_SOURCES) {
+      const entry = counts.get(sourceKey);
+      if (entry && entry.total > 0) {
+        rows.push({
+          source: LABELS.source[sourceKey],
+          total: entry.total,
+          enrolled: entry.enrolled,
+          pct: Math.round((entry.enrolled / entry.total) * 100),
+        });
+      }
+    }
+    return rows.sort((a, b) => b.pct - a.pct);
   }, [leads]);
 
   const csvRowCount = useMemo(() => {
@@ -347,7 +362,10 @@ export function ReportsPageClient() {
   }
 
   const totalLeadsAll = leads.length;
-  const enrolledAll = leads.filter((l) => l.educationStage === "enrolled").length;
+  const enrolledAll = useMemo(
+    () => leads.filter((l) => l.educationStage === "enrolled").length,
+    [leads]
+  );
   const conversionAll = totalLeadsAll
     ? Math.round((enrolledAll / totalLeadsAll) * 100)
     : 0;
