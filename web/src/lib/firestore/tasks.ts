@@ -37,6 +37,36 @@ export function subscribeTasksForUser(
   );
 }
 
+export function subscribeTasksForRelated(
+  db: Firestore,
+  relatedType: Task["relatedType"],
+  relatedId: string,
+  onData: (tasks: Task[]) => void,
+  onError?: (e: Error) => void
+): Unsubscribe {
+  const col = collection(db, "tasks");
+  const q = query(
+    col,
+    where("relatedType", "==", relatedType),
+    where("relatedId", "==", relatedId)
+  );
+
+  return onSnapshot(
+    q,
+    (snap) => {
+      const items = snap.docs.map((d) => taskFromDoc(d.id, d.data()));
+      // Client-side sort by createdAt descending to avoid requiring composite indexes
+      items.sort((a, b) => {
+        const tA = a.createdAt ? a.createdAt.getTime() : 0;
+        const tB = b.createdAt ? b.createdAt.getTime() : 0;
+        return tB - tA;
+      });
+      onData(items);
+    },
+    (err) => onError?.(err as Error)
+  );
+}
+
 export async function createTask(
   db: Firestore,
   input: {
