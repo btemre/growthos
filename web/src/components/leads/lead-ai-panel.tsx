@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+import { CheckIcon, CopyIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -34,6 +36,17 @@ export function LeadAiPanel({
   onFetchInsight: () => void;
   onCreateTask: () => void;
 }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopySummary = () => {
+    void navigator.clipboard.writeText(aiSummary);
+    setCopied(true);
+    toast.success("Özet kopyalandı");
+    setTimeout(() => {
+      setCopied(false);
+    }, 2000);
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -60,12 +73,20 @@ export function LeadAiPanel({
                 type="button"
                 size="sm"
                 variant="ghost"
-                onClick={() => {
-                  void navigator.clipboard.writeText(aiSummary);
-                  toast.success("Kopyalandı");
-                }}
+                aria-label="Özeti panoya kopyala"
+                onClick={handleCopySummary}
               >
-                Kopyala
+                {copied ? (
+                  <>
+                    <CheckIcon className="mr-1 size-3.5 text-green-600" aria-hidden="true" />
+                    <span>Kopyalandı</span>
+                  </>
+                ) : (
+                  <>
+                    <CopyIcon className="mr-1 size-3.5" aria-hidden="true" />
+                    <span>Kopyala</span>
+                  </>
+                )}
               </Button>
             </div>
             <p className="whitespace-pre-wrap rounded-md border bg-card/50 p-3">
@@ -80,12 +101,14 @@ export function LeadAiPanel({
               {aiAction}
             </p>
             <div className="flex flex-wrap items-center gap-2">
-              <Label className="text-xs">Görev tipi</Label>
+              <Label htmlFor="ai-task-type" className="text-xs">
+                Görev tipi
+              </Label>
               <Select
                 value={aiTaskType}
                 onValueChange={(v) => v && setAiTaskType(coerceTaskType(v))}
               >
-                <SelectTrigger className="w-[200px]">
+                <SelectTrigger id="ai-task-type" aria-label="Görev tipi seçimi" className="w-[200px]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
