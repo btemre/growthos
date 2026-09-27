@@ -4,9 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
 import Link from "next/link";
-import { ClipboardList, Sparkles } from "lucide-react";
+import { ClipboardList, Loader2Icon, Sparkles } from "lucide-react";
 import { toast } from "sonner";
-import { buttonVariants } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -36,7 +36,8 @@ export function GlobalRightRail() {
   const [quickTask, setQuickTask] = useState("");
   const [quickNote, setQuickNote] = useState("");
   const [quickLeadId, setQuickLeadId] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [taskBusy, setTaskBusy] = useState(false);
+  const [noteBusy, setNoteBusy] = useState(false);
   const uid = firebaseUser?.uid ?? "";
   const isAdmin = profile?.role === "admin";
 
@@ -76,7 +77,7 @@ export function GlobalRightRail() {
       toast.error("Lead seçin ve başlık girin");
       return;
     }
-    setBusy(true);
+    setTaskBusy(true);
     try {
       const db = getFirebaseDb();
       await createTask(db, {
@@ -93,7 +94,7 @@ export function GlobalRightRail() {
       console.error(e);
       toast.error("Oluşturulamadı");
     } finally {
-      setBusy(false);
+      setTaskBusy(false);
     }
   }
 
@@ -102,7 +103,7 @@ export function GlobalRightRail() {
       toast.error("Lead seçin ve not girin");
       return;
     }
-    setBusy(true);
+    setNoteBusy(true);
     try {
       const db = getFirebaseDb();
       await addActivity(db, {
@@ -118,24 +119,26 @@ export function GlobalRightRail() {
       console.error(e);
       toast.error("Kaydedilemedi");
     } finally {
-      setBusy(false);
+      setNoteBusy(false);
     }
   }
+
+  const isBusy = taskBusy || noteBusy;
 
   return (
     <div className="space-y-4">
       <Card className="border-primary/20 bg-primary/5">
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-            <Sparkles className="size-4 text-primary" />
+            <Sparkles className="size-4 text-primary" aria-hidden="true" />
             Hızlı işlemler
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3 text-xs">
           <div className="space-y-1.5">
-            <Label>Lead</Label>
+            <Label htmlFor="quick-lead-select">Lead</Label>
             <Select value={quickLeadId} onValueChange={(v) => setQuickLeadId(v ?? "")}>
-              <SelectTrigger>
+              <SelectTrigger id="quick-lead-select" aria-label="Lead seçimi">
                 <SelectValue placeholder="Lead seçin" />
               </SelectTrigger>
               <SelectContent>
@@ -155,14 +158,22 @@ export function GlobalRightRail() {
               onChange={(e) => setQuickTask(e.target.value)}
               placeholder="Bugün yapılacak…"
             />
-            <button
+            <Button
               type="button"
-              className={cn(buttonVariants({ size: "sm" }), "w-full")}
-              disabled={busy}
+              size="sm"
+              className="w-full"
+              disabled={isBusy}
               onClick={() => void submitQuickTask()}
             >
-              Görev ekle
-            </button>
+              {taskBusy ? (
+                <>
+                  <Loader2Icon className="size-3.5 animate-spin mr-1.5" aria-hidden="true" />
+                  Ekleniyor…
+                </>
+              ) : (
+                "Görev ekle"
+              )}
+            </Button>
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="quick-note">Hızlı not</Label>
@@ -173,14 +184,23 @@ export function GlobalRightRail() {
               onChange={(e) => setQuickNote(e.target.value)}
               placeholder="Kısa not…"
             />
-            <button
+            <Button
               type="button"
-              className={cn(buttonVariants({ size: "sm", variant: "outline" }), "w-full")}
-              disabled={busy}
+              size="sm"
+              variant="outline"
+              className="w-full"
+              disabled={isBusy}
               onClick={() => void submitQuickNote()}
             >
-              Not kaydet
-            </button>
+              {noteBusy ? (
+                <>
+                  <Loader2Icon className="size-3.5 animate-spin mr-1.5" aria-hidden="true" />
+                  Kaydediliyor…
+                </>
+              ) : (
+                "Not kaydet"
+              )}
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -237,7 +257,7 @@ export function GlobalRightRail() {
           "w-full justify-start"
         )}
       >
-        <ClipboardList className="mr-2 size-4" />
+        <ClipboardList className="mr-2 size-4" aria-hidden="true" />
         Görev listesi
       </Link>
     </div>
