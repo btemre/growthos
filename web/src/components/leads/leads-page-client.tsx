@@ -80,9 +80,12 @@ export function LeadsPageClient() {
     });
   }, []);
 
-  const todayStart = startOfDay(new Date());
+  // Stabilize date boundary dependency using a string key (yyyy-MM-dd) to prevent
+  // reinstantiating Date objects on every render and breaking useMemo cache.
+  const todayKey = format(new Date(), "yyyy-MM-dd");
 
   const filtered = useMemo(() => {
+    const todayStart = startOfDay(new Date());
     return leads.filter((l) => {
       if (typeFilter !== "all" && l.type !== typeFilter) return false;
       if (sourceFilter !== "all" && l.source !== sourceFilter) return false;
@@ -95,7 +98,8 @@ export function LeadsPageClient() {
       if (tagFilter !== "all" && !l.tagIds?.includes(tagFilter)) return false;
       return true;
     });
-  }, [leads, typeFilter, sourceFilter, preset, tagFilter, todayStart, uid]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leads, typeFilter, sourceFilter, preset, tagFilter, todayKey, uid]);
 
   const columns = useMemo<ColumnDef<Lead>[]>(
     () => [
