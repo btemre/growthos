@@ -132,16 +132,20 @@ export function EducationBoard() {
     return subscribeLeadsForUser(db, uid, isAdmin, setLeads);
   }, [uid, isAdmin]);
 
+  // Single-pass lead stage grouping: avoids creating intermediate filtered array
+  // and eliminates duplicate Map set calls during iterations.
   const byStage = useMemo(() => {
     const map = new Map<EducationStage, Lead[]>();
     EDUCATION_STAGES.forEach((s) => map.set(s, []));
-    leads
-      .filter((l) => l.type === "education_candidate")
-      .forEach((l) => {
-        const list = map.get(l.educationStage) ?? [];
-        list.push(l);
-        map.set(l.educationStage, list);
-      });
+    for (let i = 0; i < leads.length; i++) {
+      const l = leads[i];
+      if (l.type === "education_candidate") {
+        const list = map.get(l.educationStage);
+        if (list) {
+          list.push(l);
+        }
+      }
+    }
     return map;
   }, [leads]);
 
@@ -188,21 +192,24 @@ export function EducationBoard() {
         />
         <div className="w-full overflow-x-auto pb-2">
           <div className="flex min-w-min gap-3 pb-2">
-            {EDUCATION_STAGES.map((stage) => (
-              <StageColumn
-                key={stage}
-                stage={stage}
-                count={(byStage.get(stage) ?? []).length}
-              >
-                {(byStage.get(stage) ?? []).map((lead) => (
-                  <LeadCard
-                    key={lead.id}
-                    lead={lead}
-                    ownerLabel={resolveOwner(lead.ownerId, uid)}
-                  />
-                ))}
-              </StageColumn>
-            ))}
+            {EDUCATION_STAGES.map((stage) => {
+              const stageLeads = byStage.get(stage) ?? [];
+              return (
+                <StageColumn
+                  key={stage}
+                  stage={stage}
+                  count={stageLeads.length}
+                >
+                  {stageLeads.map((lead) => (
+                    <LeadCard
+                      key={lead.id}
+                      lead={lead}
+                      ownerLabel={resolveOwner(lead.ownerId, uid)}
+                    />
+                  ))}
+                </StageColumn>
+              );
+            })}
           </div>
         </div>
       </div>
