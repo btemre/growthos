@@ -166,6 +166,10 @@ export function DashboardHome() {
         isBefore(t.dueDate, todayStart)
     );
 
+    // Performance optimization: Pre-filter open tasks inside useMemo
+    // to avoid redundant array filtering during component rendering.
+    const openTasks = tasks.filter((t) => t.status === "open");
+
     return {
       leadsToday,
       callsToday,
@@ -177,6 +181,7 @@ export function DashboardHome() {
       hotSilent,
       awaitingPayment,
       overdueTasks,
+      openTasks,
     };
   }, [leads, tasks, deals, activities, todayStart, todayEnd, weekAgo, monthStart]);
 
@@ -325,11 +330,10 @@ export function DashboardHome() {
             <CardTitle className="text-base">Bugünkü görevler</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
-            {tasks.filter((t) => t.status === "open").length === 0 ? (
+            {stats.openTasks.length === 0 ? (
               <p className="text-muted-foreground">Açık görev yok.</p>
             ) : (
-              tasks
-                .filter((t) => t.status === "open")
+              stats.openTasks
                 .slice(0, 6)
                 .map((t) => (
                   <div
