@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Loader2Icon } from "lucide-react";
 import { toast } from "sonner";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -70,25 +71,33 @@ function DealFormFields({
     >
       <div className="space-y-2">
         <Label htmlFor="companyName">Firma adı</Label>
-        <Input id="companyName" {...register("companyName")} />
+        <Input
+          id="companyName"
+          placeholder="Örn. ACME Teknoloji A.Ş."
+          {...register("companyName")}
+        />
         {errors.companyName ? (
           <p className="text-xs text-destructive">{errors.companyName.message}</p>
         ) : null}
       </div>
       <div className="space-y-2">
         <Label htmlFor="title">Fırsat başlığı</Label>
-        <Input id="title" {...register("title")} />
+        <Input
+          id="title"
+          placeholder="Örn. Web Yazılım Projesi"
+          {...register("title")}
+        />
         {errors.title ? (
           <p className="text-xs text-destructive">{errors.title.message}</p>
         ) : null}
       </div>
       <div className="space-y-2">
-        <Label>Hizmet türü</Label>
+        <Label htmlFor="new-deal-service-type">Hizmet türü</Label>
         <Select
           value={serviceType}
           onValueChange={(v) => v && setValue("serviceType", v as ServiceType)}
         >
-          <SelectTrigger>
+          <SelectTrigger id="new-deal-service-type">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -106,11 +115,19 @@ function DealFormFields({
           id="estimatedValue"
           type="number"
           min={0}
+          placeholder="Örn. 50000"
           {...register("estimatedValue")}
         />
       </div>
       <Button type="submit" disabled={busy} className="w-full">
-        {busy ? "Kaydediliyor…" : "Oluştur"}
+        {busy ? (
+          <>
+            <Loader2Icon className="size-4 animate-spin" aria-hidden="true" />
+            <span>Oluşturuluyor…</span>
+          </>
+        ) : (
+          "Oluştur"
+        )}
       </Button>
     </form>
   );
