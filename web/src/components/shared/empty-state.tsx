@@ -14,10 +14,10 @@ export function EmptyState({
   action?: ReactNode;
 }) {
   return (
-    <Card className="border-dashed">
+    <Card className="border-dashed" role="status" aria-live="polite">
       <CardContent className="flex flex-col items-center justify-center gap-3 py-12 text-center">
         {Icon ? (
-          <Icon className="size-10 text-muted-foreground/50" aria-hidden />
+          <Icon className="size-10 text-muted-foreground/50" aria-hidden="true" />
         ) : null}
         <div>
           <p className="font-medium">{title}</p>
