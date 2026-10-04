@@ -103,6 +103,7 @@ export function AppShell({
             size="icon"
             className="lg:hidden"
             onClick={() => setMobileOpen(false)}
+            aria-label="Menüyü kapat"
           >
             <X className="size-4" />
           </Button>
@@ -196,6 +197,7 @@ export function AppShell({
           ) : null}
           <DropdownMenu>
             <DropdownMenuTrigger
+              aria-label="Kullanıcı menüsü"
               className={cn(
                 buttonVariants({ variant: "ghost" }),
                 "gap-2 px-2 data-[popup-open]:bg-muted"
