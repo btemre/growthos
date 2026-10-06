@@ -70,25 +70,33 @@ function DealFormFields({
     >
       <div className="space-y-2">
         <Label htmlFor="companyName">Firma adı</Label>
-        <Input id="companyName" {...register("companyName")} />
+        <Input
+          id="companyName"
+          placeholder="Örn. ACME A.Ş."
+          {...register("companyName")}
+        />
         {errors.companyName ? (
           <p className="text-xs text-destructive">{errors.companyName.message}</p>
         ) : null}
       </div>
       <div className="space-y-2">
         <Label htmlFor="title">Fırsat başlığı</Label>
-        <Input id="title" {...register("title")} />
+        <Input
+          id="title"
+          placeholder="Örn. Web Yazılım Projesi"
+          {...register("title")}
+        />
         {errors.title ? (
           <p className="text-xs text-destructive">{errors.title.message}</p>
         ) : null}
       </div>
       <div className="space-y-2">
-        <Label>Hizmet türü</Label>
+        <Label htmlFor="serviceType">Hizmet türü</Label>
         <Select
           value={serviceType}
           onValueChange={(v) => v && setValue("serviceType", v as ServiceType)}
         >
-          <SelectTrigger>
+          <SelectTrigger id="serviceType" aria-label="Hizmet türü seçimi">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -106,6 +114,7 @@ function DealFormFields({
           id="estimatedValue"
           type="number"
           min={0}
+          placeholder="Örn. 150000"
           {...register("estimatedValue")}
         />
       </div>
