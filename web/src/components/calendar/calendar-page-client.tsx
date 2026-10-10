@@ -6,7 +6,6 @@ import {
   eachDayOfInterval,
   endOfMonth,
   format,
-  isSameDay,
   isSameMonth,
   startOfMonth,
   startOfWeek,
@@ -52,10 +51,14 @@ export function CalendarPageClient() {
     };
   }, [uid, isAdmin]);
 
-  const events = useMemo(() => {
-    const list: CalEvent[] = [];
+  // Group calendar events by yyyy-MM-dd date key in a memoized Map
+  // Replaces O(D * E) array filters per grid cell with O(1) Map lookups
+  const eventsByDay = useMemo(() => {
+    const map = new Map<string, CalEvent[]>();
     for (const t of tasks) {
       if (!t.dueDate || t.status !== "open") continue;
+      const key = format(t.dueDate, "yyyy-MM-dd");
+      const list = map.get(key) ?? [];
       list.push({
         id: `task-${t.id}`,
         date: t.dueDate,
@@ -63,9 +66,12 @@ export function CalendarPageClient() {
         href: "/tasks",
         kind: "task",
       });
+      map.set(key, list);
     }
     for (const l of leads) {
       if (!l.nextActionAt) continue;
+      const key = format(l.nextActionAt, "yyyy-MM-dd");
+      const list = map.get(key) ?? [];
       list.push({
         id: `lead-${l.id}`,
         date: l.nextActionAt,
@@ -73,8 +79,9 @@ export function CalendarPageClient() {
         href: `/leads/${l.id}`,
         kind: "lead",
       });
+      map.set(key, list);
     }
-    return list;
+    return map;
   }, [tasks, leads]);
 
   const monthStart = startOfMonth(viewMonth);
@@ -83,9 +90,8 @@ export function CalendarPageClient() {
   const gridEnd = startOfWeek(addDays(monthEnd, 6), { weekStartsOn: 1 });
   const days = eachDayOfInterval({ start: gridStart, end: addDays(gridEnd, 6) });
 
-  const selectedDayEvents = events.filter((e) =>
-    isSameDay(e.date, selectedDay)
-  );
+  const selectedDayKey = format(selectedDay, "yyyy-MM-dd");
+  const selectedDayEvents = eventsByDay.get(selectedDayKey) ?? [];
 
   return (
     <div className="space-y-6">
@@ -129,12 +135,13 @@ export function CalendarPageClient() {
           </div>
           <div className="grid grid-cols-7 gap-1">
             {days.map((day) => {
-              const dayEvents = events.filter((e) => isSameDay(e.date, day));
+              const dayKey = format(day, "yyyy-MM-dd");
+              const dayEvents = eventsByDay.get(dayKey) ?? [];
               const inMonth = isSameMonth(day, viewMonth);
-              const selected = isSameDay(day, selectedDay);
+              const selected = dayKey === selectedDayKey;
               return (
                 <button
-                  key={day.toISOString()}
+                  key={dayKey}
                   type="button"
                   onClick={() => setSelectedDay(day)}
                   className={`min-h-16 rounded-md border p-1 text-left text-xs transition-colors ${
