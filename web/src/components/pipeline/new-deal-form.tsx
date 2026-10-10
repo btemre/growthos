@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -70,25 +71,41 @@ function DealFormFields({
     >
       <div className="space-y-2">
         <Label htmlFor="companyName">Firma adı</Label>
-        <Input id="companyName" {...register("companyName")} />
+        <Input
+          id="companyName"
+          placeholder="Örn. ABC Teknoloji Ltd. Şti."
+          aria-invalid={Boolean(errors.companyName)}
+          aria-describedby={errors.companyName ? "companyName-error" : undefined}
+          {...register("companyName")}
+        />
         {errors.companyName ? (
-          <p className="text-xs text-destructive">{errors.companyName.message}</p>
+          <p id="companyName-error" role="alert" className="text-xs text-destructive">
+            {errors.companyName.message}
+          </p>
         ) : null}
       </div>
       <div className="space-y-2">
         <Label htmlFor="title">Fırsat başlığı</Label>
-        <Input id="title" {...register("title")} />
+        <Input
+          id="title"
+          placeholder="Örn. Kurumsal ERP Dönüşümü"
+          aria-invalid={Boolean(errors.title)}
+          aria-describedby={errors.title ? "title-error" : undefined}
+          {...register("title")}
+        />
         {errors.title ? (
-          <p className="text-xs text-destructive">{errors.title.message}</p>
+          <p id="title-error" role="alert" className="text-xs text-destructive">
+            {errors.title.message}
+          </p>
         ) : null}
       </div>
       <div className="space-y-2">
-        <Label>Hizmet türü</Label>
+        <Label htmlFor="serviceType">Hizmet türü</Label>
         <Select
           value={serviceType}
           onValueChange={(v) => v && setValue("serviceType", v as ServiceType)}
         >
-          <SelectTrigger>
+          <SelectTrigger id="serviceType" aria-label="Hizmet türü seçin">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -106,11 +123,19 @@ function DealFormFields({
           id="estimatedValue"
           type="number"
           min={0}
+          placeholder="0"
           {...register("estimatedValue")}
         />
       </div>
       <Button type="submit" disabled={busy} className="w-full">
-        {busy ? "Kaydediliyor…" : "Oluştur"}
+        {busy ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
+            <span>Kaydediliyor…</span>
+          </>
+        ) : (
+          "Oluştur"
+        )}
       </Button>
     </form>
   );
@@ -172,6 +197,7 @@ export function NewDealForm() {
           <Link
             href="/pipeline/corporate"
             className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+            aria-label="Fırsatlar listesine geri dön"
           >
             Geri
           </Link>
@@ -188,7 +214,10 @@ export function NewDealForm() {
 
       <div className="md:hidden">
         <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-          <SheetTrigger className={cn(buttonVariants(), "w-full")}>
+          <SheetTrigger
+            className={cn(buttonVariants(), "w-full")}
+            aria-label="Yeni fırsat oluşturma formunu aç"
+          >
             Fırsat formunu aç
           </SheetTrigger>
           <SheetContent side="bottom" className="max-h-[90vh] overflow-y-auto">
