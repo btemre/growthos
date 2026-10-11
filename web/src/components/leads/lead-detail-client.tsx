@@ -61,7 +61,7 @@ export function LeadDetailClient({ leadId }: { leadId: string }) {
   const [leadLoading, setLeadLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("general");
   const [activities, setActivities] = useState<Activity[]>([]);
-  const [tasks, setTasks] = useState<Task[]>([]);
+  const [allTasks, setAllTasks] = useState<Task[]>([]);
   const [notes, setNotes] = useState("");
   const [score, setScore] = useState(0);
   const [activityContent, setActivityContent] = useState("");
@@ -91,6 +91,11 @@ export function LeadDetailClient({ leadId }: { leadId: string }) {
     return m;
   }, [programs]);
 
+  // Memoize tasks specific to this lead to prevent unnecessary Firestore re-subscriptions on leadId change
+  const tasks = useMemo(() => {
+    return allTasks.filter((t) => t.relatedType === "lead" && t.relatedId === leadId);
+  }, [allTasks, leadId]);
+
   const ownerLabel = lead ? resolveOwner(lead.ownerId, uid) : "";
 
   useEffect(() => {
@@ -118,11 +123,8 @@ export function LeadDetailClient({ leadId }: { leadId: string }) {
   useEffect(() => {
     if (!uid) return;
     const db = getFirebaseDb();
-    const unsub = subscribeTasksForUser(db, uid, isAdmin, (all) => {
-      setTasks(all.filter((t) => t.relatedType === "lead" && t.relatedId === leadId));
-    });
-    return () => unsub();
-  }, [uid, isAdmin, leadId]);
+    return subscribeTasksForUser(db, uid, isAdmin, setAllTasks);
+  }, [uid, isAdmin]);
 
   useEffect(() => {
     if (!uid) return;
