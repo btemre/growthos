@@ -360,12 +360,18 @@ export function ReportsPageClient() {
         action={
         <div className="flex flex-wrap items-end gap-3">
           <div className="space-y-1.5">
-            <Label className="text-xs">Dönem</Label>
+            <Label htmlFor="report-preset" className="text-xs">
+              Dönem
+            </Label>
             <Select
               value={preset}
               onValueChange={(v) => v && setPreset(v as Preset)}
             >
-              <SelectTrigger className="w-[160px]">
+              <SelectTrigger
+                id="report-preset"
+                className="w-[160px]"
+                aria-label="Dönem seçimi"
+              >
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -380,16 +386,22 @@ export function ReportsPageClient() {
           {preset === "custom" ? (
             <>
               <div className="space-y-1.5">
-                <Label className="text-xs">Başlangıç</Label>
+                <Label htmlFor="report-custom-start" className="text-xs">
+                  Başlangıç
+                </Label>
                 <Input
+                  id="report-custom-start"
                   type="date"
                   value={customStart}
                   onChange={(e) => setCustomStart(e.target.value)}
                 />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs">Bitiş</Label>
+                <Label htmlFor="report-custom-end" className="text-xs">
+                  Bitiş
+                </Label>
                 <Input
+                  id="report-custom-end"
                   type="date"
                   value={customEnd}
                   onChange={(e) => setCustomEnd(e.target.value)}
@@ -397,8 +409,13 @@ export function ReportsPageClient() {
               </div>
             </>
           ) : null}
-          <Button type="button" size="sm" onClick={exportCsv}>
-            <Download className="mr-1 size-4" />
+          <Button
+            type="button"
+            size="sm"
+            onClick={exportCsv}
+            aria-label="Rapor verilerini CSV dosyası olarak indir"
+          >
+            <Download className="mr-1 size-4" aria-hidden="true" />
             CSV indir ({csvRowCount} satır)
           </Button>
         </div>
