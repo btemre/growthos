@@ -5,6 +5,7 @@ import { tr } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import type { Task } from "@/types/models";
 
 export function LeadTasksTab({
@@ -31,17 +32,25 @@ export function LeadTasksTab({
           <CardTitle className="text-base">Yeni görev</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <Input
-            placeholder="Başlık"
-            value={taskTitle}
-            onChange={(e) => setTaskTitle(e.target.value)}
-          />
-          <Input
-            type="datetime-local"
-            value={taskDue}
-            onChange={(e) => setTaskDue(e.target.value)}
-          />
-          <Button type="button" onClick={onCreate}>
+          <div className="space-y-1.5">
+            <Label htmlFor="lead-task-title">Başlık</Label>
+            <Input
+              id="lead-task-title"
+              placeholder="Görev başlığı"
+              value={taskTitle}
+              onChange={(e) => setTaskTitle(e.target.value)}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="lead-task-due">Bitiş tarihi</Label>
+            <Input
+              id="lead-task-due"
+              type="datetime-local"
+              value={taskDue}
+              onChange={(e) => setTaskDue(e.target.value)}
+            />
+          </div>
+          <Button type="button" onClick={onCreate} disabled={!taskTitle.trim()}>
             Oluştur
           </Button>
         </CardContent>
@@ -63,7 +72,12 @@ export function LeadTasksTab({
               </p>
             </div>
             {t.status === "open" ? (
-              <Button size="sm" variant="outline" onClick={() => onComplete(t.id)}>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => onComplete(t.id)}
+                aria-label={`"${t.title}" görevini tamamla`}
+              >
                 Tamamla
               </Button>
             ) : null}
