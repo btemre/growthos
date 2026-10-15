@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import {
   DndContext,
   type DragEndEvent,
@@ -64,65 +64,78 @@ function StageColumn({
   );
 }
 
-function DealCard({
-  deal,
-  ownerLabel,
-  showProposalLink,
-}: {
-  deal: Deal;
-  ownerLabel: string;
-  showProposalLink?: boolean;
-}) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } =
-    useDraggable({ id: deal.id });
+// Memoized DealCard with custom primitive comparison to avoid unnecessary re-renders when subscription snapshots emit new array references.
+const DealCard = memo(
+  function DealCard({
+    deal,
+    ownerLabel,
+    showProposalLink,
+  }: {
+    deal: Deal;
+    ownerLabel: string;
+    showProposalLink?: boolean;
+  }) {
+    const { attributes, listeners, setNodeRef, transform, isDragging } =
+      useDraggable({ id: deal.id });
 
-  const style = transform
-    ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` }
-    : undefined;
+    const style = transform
+      ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` }
+      : undefined;
 
-  return (
-    <div ref={setNodeRef} style={style} {...listeners} {...attributes}>
-      <Card
-        className={cn(
-          "cursor-grab border-border/80 shadow-sm active:cursor-grabbing",
-          isDragging && "opacity-60"
-        )}
-      >
-        <CardContent className="space-y-2 p-3 text-sm">
-          <Link
-            href={`/pipeline/corporate/${deal.id}`}
-            className="font-medium hover:underline"
-            onPointerDown={(e) => e.stopPropagation()}
-          >
-            {deal.title}
-          </Link>
-          <p className="text-xs text-muted-foreground">{deal.companyName}</p>
-          <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-            <Avatar className="size-5">
-              <AvatarFallback className="text-[9px]">
-                {ownerLabel.slice(0, 2).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            {ownerLabel}
-          </div>
-          <Badge variant="secondary" className="text-[10px]">
-            {LABELS.serviceType[deal.serviceType]}
-          </Badge>
-          {showProposalLink ? (
+    return (
+      <div ref={setNodeRef} style={style} {...listeners} {...attributes}>
+        <Card
+          className={cn(
+            "cursor-grab border-border/80 shadow-sm active:cursor-grabbing",
+            isDragging && "opacity-60"
+          )}
+        >
+          <CardContent className="space-y-2 p-3 text-sm">
             <Link
-              href={`/proposals?deal=${deal.id}`}
-              className="inline-block text-xs font-medium text-primary hover:underline"
+              href={`/pipeline/corporate/${deal.id}`}
+              className="font-medium hover:underline"
               onPointerDown={(e) => e.stopPropagation()}
-              onClick={(e) => e.stopPropagation()}
             >
-              Teklif →
+              {deal.title}
             </Link>
-          ) : null}
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
+            <p className="text-xs text-muted-foreground">{deal.companyName}</p>
+            <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+              <Avatar className="size-5">
+                <AvatarFallback className="text-[9px]">
+                  {ownerLabel.slice(0, 2).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              {ownerLabel}
+            </div>
+            <Badge variant="secondary" className="text-[10px]">
+              {LABELS.serviceType[deal.serviceType]}
+            </Badge>
+            {showProposalLink ? (
+              <Link
+                href={`/proposals?deal=${deal.id}`}
+                className="inline-block text-xs font-medium text-primary hover:underline"
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => e.stopPropagation()}
+              >
+                Teklif →
+              </Link>
+            ) : null}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  },
+  (prev, next) =>
+    prev.ownerLabel === next.ownerLabel &&
+    prev.showProposalLink === next.showProposalLink &&
+    prev.deal.id === next.deal.id &&
+    prev.deal.title === next.deal.title &&
+    prev.deal.companyName === next.deal.companyName &&
+    prev.deal.serviceType === next.deal.serviceType &&
+    prev.deal.stage === next.deal.stage &&
+    prev.deal.estimatedValue === next.deal.estimatedValue &&
+    prev.deal.ownerId === next.deal.ownerId
+);
 
 export function CorporateBoard() {
   const { firebaseUser, profile } = useAuth();
@@ -140,14 +153,17 @@ export function CorporateBoard() {
     return subscribeDealsForUser(db, uid, isAdmin, setDeals);
   }, [uid, isAdmin]);
 
+  // Compute stage deal list and total value in a single pass to eliminate O(S * D) reduce operations during JSX render loops.
   const byStage = useMemo(() => {
-    const map = new Map<DealStage, Deal[]>();
-    CORPORATE_DEAL_STAGES.forEach((s) => map.set(s, []));
-    deals.forEach((d) => {
-      const list = map.get(d.stage) ?? [];
-      list.push(d);
-      map.set(d.stage, list);
-    });
+    const map = new Map<DealStage, { list: Deal[]; totalValue: number }>();
+    CORPORATE_DEAL_STAGES.forEach((s) => map.set(s, { list: [], totalValue: 0 }));
+    for (const d of deals) {
+      const entry = map.get(d.stage);
+      if (entry) {
+        entry.list.push(d);
+        entry.totalValue += d.estimatedValue ?? 0;
+      }
+    }
     return map;
   }, [deals]);
 
@@ -217,27 +233,23 @@ export function CorporateBoard() {
         <div className="w-full overflow-x-auto pb-2">
           <div className="flex min-w-min gap-3 pb-2">
             {CORPORATE_DEAL_STAGES.map((stage) => {
-              const list = byStage.get(stage) ?? [];
-              const totalValue = list.reduce(
-                (acc, d) => acc + (d.estimatedValue ?? 0),
-                0
-              );
+              const { list = [], totalValue = 0 } = byStage.get(stage) ?? {};
               return (
-              <StageColumn
-                key={stage}
-                stage={stage}
-                count={list.length}
-                totalValue={totalValue}
-              >
-                {list.map((deal) => (
-                  <DealCard
-                    key={deal.id}
-                    deal={deal}
-                    ownerLabel={resolveOwner(deal.ownerId, uid)}
-                    showProposalLink={canManage}
-                  />
-                ))}
-              </StageColumn>
+                <StageColumn
+                  key={stage}
+                  stage={stage}
+                  count={list.length}
+                  totalValue={totalValue}
+                >
+                  {list.map((deal) => (
+                    <DealCard
+                      key={deal.id}
+                      deal={deal}
+                      ownerLabel={resolveOwner(deal.ownerId, uid)}
+                      showProposalLink={canManage}
+                    />
+                  ))}
+                </StageColumn>
               );
             })}
           </div>
