@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import {
   DndContext,
   type DragEndEvent,
@@ -62,58 +62,69 @@ function StageColumn({
   );
 }
 
-function LeadCard({ lead, ownerLabel }: { lead: Lead; ownerLabel: string }) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } =
-    useDraggable({ id: lead.id });
+// Memoized LeadCard with custom primitive comparison to prevent unnecessary re-renders during board state updates or document snapshot updates.
+const LeadCard = memo(
+  function LeadCard({ lead, ownerLabel }: { lead: Lead; ownerLabel: string }) {
+    const { attributes, listeners, setNodeRef, transform, isDragging } =
+      useDraggable({ id: lead.id });
 
-  const style = transform
-    ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` }
-    : undefined;
+    const style = transform
+      ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` }
+      : undefined;
 
-  return (
-    <div ref={setNodeRef} style={style} {...listeners} {...attributes}>
-      <Card
-        className={cn(
-          "cursor-grab border-border/80 shadow-sm active:cursor-grabbing",
-          isDragging && "opacity-60"
-        )}
-      >
-        <CardContent className="space-y-2 p-3 text-sm">
-          <Link
-            href={`/leads/${lead.id}`}
-            className="font-medium hover:underline"
-            onPointerDown={(e) => e.stopPropagation()}
-          >
-            {lead.name}
-          </Link>
-          <div className="flex flex-wrap items-center gap-1">
-            <StatusBadge tone={leadScoreTone(lead.score)} className="text-[10px]">
-              {lead.score}
-            </StatusBadge>
-            {lead.lastContactAt ? (
-              <span className="text-[10px] text-muted-foreground">
-                {formatDistanceToNow(lead.lastContactAt, {
-                  addSuffix: true,
-                  locale: tr,
-                })}
-              </span>
-            ) : (
-              <span className="text-[10px] text-muted-foreground">Temas yok</span>
-            )}
-          </div>
-          <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-            <Avatar className="size-5">
-              <AvatarFallback className="text-[9px]">
-                {ownerLabel.slice(0, 2).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            {ownerLabel}
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
+    return (
+      <div ref={setNodeRef} style={style} {...listeners} {...attributes}>
+        <Card
+          className={cn(
+            "cursor-grab border-border/80 shadow-sm active:cursor-grabbing",
+            isDragging && "opacity-60"
+          )}
+        >
+          <CardContent className="space-y-2 p-3 text-sm">
+            <Link
+              href={`/leads/${lead.id}`}
+              className="font-medium hover:underline"
+              onPointerDown={(e) => e.stopPropagation()}
+            >
+              {lead.name}
+            </Link>
+            <div className="flex flex-wrap items-center gap-1">
+              <StatusBadge tone={leadScoreTone(lead.score)} className="text-[10px]">
+                {lead.score}
+              </StatusBadge>
+              {lead.lastContactAt ? (
+                <span className="text-[10px] text-muted-foreground">
+                  {formatDistanceToNow(lead.lastContactAt, {
+                    addSuffix: true,
+                    locale: tr,
+                  })}
+                </span>
+              ) : (
+                <span className="text-[10px] text-muted-foreground">Temas yok</span>
+              )}
+            </div>
+            <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+              <Avatar className="size-5">
+                <AvatarFallback className="text-[9px]">
+                  {ownerLabel.slice(0, 2).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              {ownerLabel}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  },
+  (prev, next) =>
+    prev.ownerLabel === next.ownerLabel &&
+    prev.lead.id === next.lead.id &&
+    prev.lead.name === next.lead.name &&
+    prev.lead.score === next.lead.score &&
+    prev.lead.educationStage === next.lead.educationStage &&
+    prev.lead.ownerId === next.lead.ownerId &&
+    prev.lead.lastContactAt?.getTime() === next.lead.lastContactAt?.getTime()
+);
 
 export function EducationBoard() {
   const { firebaseUser, profile } = useAuth();
@@ -132,16 +143,18 @@ export function EducationBoard() {
     return subscribeLeadsForUser(db, uid, isAdmin, setLeads);
   }, [uid, isAdmin]);
 
+  // Single-pass lead iteration inside useMemo to avoid intermediate array allocations from .filter()
   const byStage = useMemo(() => {
     const map = new Map<EducationStage, Lead[]>();
     EDUCATION_STAGES.forEach((s) => map.set(s, []));
-    leads
-      .filter((l) => l.type === "education_candidate")
-      .forEach((l) => {
-        const list = map.get(l.educationStage) ?? [];
-        list.push(l);
-        map.set(l.educationStage, list);
-      });
+    for (const l of leads) {
+      if (l.type === "education_candidate") {
+        const list = map.get(l.educationStage);
+        if (list) {
+          list.push(l);
+        }
+      }
+    }
     return map;
   }, [leads]);
 
@@ -188,21 +201,20 @@ export function EducationBoard() {
         />
         <div className="w-full overflow-x-auto pb-2">
           <div className="flex min-w-min gap-3 pb-2">
-            {EDUCATION_STAGES.map((stage) => (
-              <StageColumn
-                key={stage}
-                stage={stage}
-                count={(byStage.get(stage) ?? []).length}
-              >
-                {(byStage.get(stage) ?? []).map((lead) => (
-                  <LeadCard
-                    key={lead.id}
-                    lead={lead}
-                    ownerLabel={resolveOwner(lead.ownerId, uid)}
-                  />
-                ))}
-              </StageColumn>
-            ))}
+            {EDUCATION_STAGES.map((stage) => {
+              const stageLeads = byStage.get(stage) ?? [];
+              return (
+                <StageColumn key={stage} stage={stage} count={stageLeads.length}>
+                  {stageLeads.map((lead) => (
+                    <LeadCard
+                      key={lead.id}
+                      lead={lead}
+                      ownerLabel={resolveOwner(lead.ownerId, uid)}
+                    />
+                  ))}
+                </StageColumn>
+              );
+            })}
           </div>
         </div>
       </div>
