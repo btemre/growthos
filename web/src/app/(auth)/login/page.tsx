@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { Loader2Icon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -19,6 +20,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
+  const [resetBusy, setResetBusy] = useState(false);
 
   useEffect(() => {
     if (loading || needsFirebaseConfig) return;
@@ -37,6 +39,20 @@ export default function LoginPage() {
       toast.error("Giriş başarısız. E-posta ve şifreyi kontrol edin.");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function handlePasswordReset() {
+    if (!email.trim() || resetBusy || busy) return;
+    setResetBusy(true);
+    try {
+      await sendPasswordResetEmail(getFirebaseAuth(), email.trim());
+      toast.success("Sıfırlama bağlantısı e-postanıza gönderildi");
+    } catch (err) {
+      console.error(err);
+      toast.error("E-posta gönderilemedi");
+    } finally {
+      setResetBusy(false);
     }
   }
 
@@ -143,25 +159,31 @@ export default function LoginPage() {
                       required
                     />
                   </div>
-                  <Button type="submit" className="w-full" disabled={busy || loading}>
-                    Giriş yap
+                  <Button type="submit" className="w-full" disabled={busy || resetBusy || loading}>
+                    {busy ? (
+                      <>
+                        <Loader2Icon className="size-4 animate-spin" aria-hidden="true" />
+                        <span>Giriş yapılıyor…</span>
+                      </>
+                    ) : (
+                      "Giriş yap"
+                    )}
                   </Button>
                   <Button
                     type="button"
                     variant="link"
                     className="w-full text-xs"
-                    disabled={busy || !email.trim()}
-                    onClick={async () => {
-                      try {
-                        await sendPasswordResetEmail(getFirebaseAuth(), email.trim());
-                        toast.success("Sıfırlama bağlantısı e-postanıza gönderildi");
-                      } catch (err) {
-                        console.error(err);
-                        toast.error("E-posta gönderilemedi");
-                      }
-                    }}
+                    disabled={busy || resetBusy || !email.trim()}
+                    onClick={handlePasswordReset}
                   >
-                    Şifremi unuttum
+                    {resetBusy ? (
+                      <>
+                        <Loader2Icon className="size-3 animate-spin" aria-hidden="true" />
+                        <span>Sıfırlama bağlantısı gönderiliyor…</span>
+                      </>
+                    ) : (
+                      "Şifremi unuttum"
+                    )}
                   </Button>
                 </form>
               </TabsContent>
@@ -190,8 +212,15 @@ export default function LoginPage() {
                       minLength={6}
                     />
                   </div>
-                  <Button type="submit" className="w-full" disabled={busy || loading}>
-                    Hesap oluştur
+                  <Button type="submit" className="w-full" disabled={busy || resetBusy || loading}>
+                    {busy ? (
+                      <>
+                        <Loader2Icon className="size-4 animate-spin" aria-hidden="true" />
+                        <span>Hesap oluşturuluyor…</span>
+                      </>
+                    ) : (
+                      "Hesap oluştur"
+                    )}
                   </Button>
                   <p className="text-center text-xs text-muted-foreground">
                     Yönetici rolü için ortamda{" "}
