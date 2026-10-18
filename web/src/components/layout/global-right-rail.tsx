@@ -71,6 +71,11 @@ export function GlobalRightRail() {
     );
   }, [tasks]);
 
+  // Memoize slices to avoid array allocations on every keystroke when typing in quickTask or quickNote inputs
+  const leadOptions = useMemo(() => leads.slice(0, 30), [leads]);
+  const topTodayTasks = useMemo(() => todayTasks.slice(0, 5), [todayTasks]);
+  const recentActivities = useMemo(() => activities.slice(0, 5), [activities]);
+
   async function submitQuickTask() {
     if (!uid || !quickTask.trim() || !quickLeadId) {
       toast.error("Lead seçin ve başlık girin");
@@ -139,7 +144,7 @@ export function GlobalRightRail() {
                 <SelectValue placeholder="Lead seçin" />
               </SelectTrigger>
               <SelectContent>
-                {leads.slice(0, 30).map((l) => (
+                {leadOptions.map((l) => (
                   <SelectItem key={l.id} value={l.id}>
                     {l.name}
                   </SelectItem>
@@ -193,7 +198,7 @@ export function GlobalRightRail() {
           <p className="text-xs text-muted-foreground">Bugün için görev yok.</p>
         ) : (
           <ul className="space-y-1 text-xs">
-            {todayTasks.slice(0, 5).map((t) => (
+            {topTodayTasks.map((t) => (
               <li key={t.id}>
                 <Link href="/tasks" className="hover:underline">
                   {t.title}
@@ -214,7 +219,7 @@ export function GlobalRightRail() {
           <p className="text-xs text-muted-foreground">Henüz aktivite yok.</p>
         ) : (
           <ul className="space-y-2 text-xs">
-            {activities.slice(0, 5).map((a) => (
+            {recentActivities.map((a) => (
               <li key={a.id} className="rounded-md border bg-card/50 p-2">
                 <span className="text-muted-foreground">
                   {a.activityDate
