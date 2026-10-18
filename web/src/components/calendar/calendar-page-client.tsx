@@ -102,7 +102,7 @@ export function CalendarPageClient() {
           onClick={() => setViewMonth((c) => addDays(startOfMonth(c), -1))}
           aria-label="Önceki ay"
         >
-          <ChevronLeft className="size-4" />
+          <ChevronLeft className="size-4" aria-hidden="true" />
         </Button>
         <h3 className="text-lg font-semibold capitalize">
           {format(viewMonth, "MMMM yyyy", { locale: tr })}
@@ -114,7 +114,7 @@ export function CalendarPageClient() {
           onClick={() => setViewMonth((c) => addDays(endOfMonth(c), 1))}
           aria-label="Sonraki ay"
         >
-          <ChevronRight className="size-4" />
+          <ChevronRight className="size-4" aria-hidden="true" />
         </Button>
       </div>
 
@@ -137,7 +137,9 @@ export function CalendarPageClient() {
                   key={day.toISOString()}
                   type="button"
                   onClick={() => setSelectedDay(day)}
-                  className={`min-h-16 rounded-md border p-1 text-left text-xs transition-colors ${
+                  aria-label={`${format(day, "d MMMM yyyy", { locale: tr })}${dayEvents.length > 0 ? `, ${dayEvents.length} olay` : ""}`}
+                  aria-pressed={selected}
+                  className={`min-h-16 rounded-md border p-1 text-left text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 ${
                     inMonth ? "bg-card" : "bg-muted/30 text-muted-foreground"
                   } ${selected ? "ring-2 ring-primary" : ""}`}
                 >
