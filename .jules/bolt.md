@@ -1,0 +1,3 @@
+## 2025-02-18 - Stabilizing useMemo with Date String Keys
+**Learning:** Instantiating `Date` objects during the render phase and placing them in a `useMemo` dependency array invalidates memoization on every render because object reference equality fails (`new Date() !== new Date()`). Using a formatted date string (like `todayKey = format(new Date(), "yyyy-MM-dd")`) provides a stable primitive dependency. Adding `void todayKey;` inside the `useMemo` body satisfies ESLint's `react-hooks/exhaustive-deps` rule.
+**Action:** Always move `Date` object instantiations inside `useMemo` and depend on a primitive string key (like `todayKey`) when date boundary invalidations are needed.
