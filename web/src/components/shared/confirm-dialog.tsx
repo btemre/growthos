@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+import { Loader2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -31,6 +33,18 @@ export function ConfirmDialog({
   onConfirm: () => void | Promise<void>;
   busy?: boolean;
 }) {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const isLoading = busy || isSubmitting;
+
+  const handleConfirm = async () => {
+    try {
+      setIsSubmitting(true);
+      await onConfirm();
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
@@ -45,16 +59,19 @@ export function ConfirmDialog({
             type="button"
             variant="outline"
             onClick={() => onOpenChange(false)}
-            disabled={busy}
+            disabled={isLoading}
           >
             {cancelLabel}
           </Button>
           <Button
             type="button"
             variant={variant === "destructive" ? "destructive" : "default"}
-            disabled={busy}
-            onClick={() => void onConfirm()}
+            disabled={isLoading}
+            onClick={() => void handleConfirm()}
           >
+            {isLoading ? (
+              <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+            ) : null}
             {confirmLabel}
           </Button>
         </DialogFooter>
