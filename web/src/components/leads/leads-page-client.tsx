@@ -12,7 +12,7 @@ import {
   type ColumnDef,
   type SortingState,
 } from "@tanstack/react-table";
-import { ArrowUpDown, MessageCircle, Phone } from "lucide-react";
+import { ArrowUpDown, MessageCircle, Phone, Search, X } from "lucide-react";
 import { format, isBefore, startOfDay } from "date-fns";
 import { tr } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
@@ -159,10 +159,10 @@ export function LeadsPageClient() {
               {l.phone ? (
                 <a
                   href={`tel:${l.phone}`}
-                  aria-label="Ara"
-                  className="inline-flex size-8 items-center justify-center rounded-md hover:bg-muted"
+                  aria-label={`${l.name} kişisini ara`}
+                  className="inline-flex size-8 items-center justify-center rounded-md hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 >
-                  <Phone className="size-4" />
+                  <Phone className="size-4" aria-hidden="true" />
                 </a>
               ) : null}
               {l.whatsapp || l.phone ? (
@@ -170,10 +170,10 @@ export function LeadsPageClient() {
                   href={`https://wa.me/${(l.whatsapp ?? l.phone ?? "").replace(/\D/g, "")}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  aria-label="WhatsApp"
-                  className="inline-flex size-8 items-center justify-center rounded-md hover:bg-muted"
+                  aria-label={`${l.name} kişisine WhatsApp mesajı gönder`}
+                  className="inline-flex size-8 items-center justify-center rounded-md hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 >
-                  <MessageCircle className="size-4" />
+                  <MessageCircle className="size-4" aria-hidden="true" />
                 </a>
               ) : null}
             </div>
@@ -225,13 +225,14 @@ export function LeadsPageClient() {
           <CardTitle className="text-base">Filtreler</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2" role="group" aria-label="Filtre grupları">
             {presetButtons.map((p) => (
               <Button
                 key={p.id}
                 type="button"
                 size="sm"
                 variant={preset === p.id ? "default" : "outline"}
+                aria-pressed={preset === p.id}
                 onClick={() => setPreset(p.id)}
               >
                 {p.label}
@@ -239,13 +240,29 @@ export function LeadsPageClient() {
             ))}
           </div>
           <div className="flex flex-col gap-3 md:flex-row md:flex-wrap">
-            <Input
-              placeholder="Ara (isim, e-posta, telefon)…"
-              value={globalFilter}
-              onChange={(e) => setGlobalFilter(e.target.value)}
-              className="md:max-w-xs"
-              aria-label="Lead ara"
-            />
+            <div className="relative md:max-w-xs w-full">
+              <Search
+                className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none"
+                aria-hidden="true"
+              />
+              <Input
+                placeholder="Ara (isim, e-posta, telefon)…"
+                value={globalFilter}
+                onChange={(e) => setGlobalFilter(e.target.value)}
+                className="pl-9 pr-8"
+                aria-label="Lead ara"
+              />
+              {globalFilter ? (
+                <button
+                  type="button"
+                  onClick={() => setGlobalFilter("")}
+                  aria-label="Aramayı temizle"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded-sm text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <X className="size-3.5" aria-hidden="true" />
+                </button>
+              ) : null}
+            </div>
             <Select
               value={typeFilter}
               onValueChange={(v) => setTypeFilter(v ?? "all")}
