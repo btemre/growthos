@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Loader2Icon } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -86,18 +87,26 @@ export function LeadFormDialog({ ownerId }: { ownerId: string }) {
           <div className="grid gap-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="lead-name">Ad / görünen ad</Label>
-              <Input id="lead-name" {...register("name")} />
+              <Input
+                id="lead-name"
+                placeholder="Örn. Ahmet Yılmaz"
+                aria-invalid={!!errors.name}
+                aria-describedby={errors.name ? "lead-name-error" : undefined}
+                {...register("name")}
+              />
               {errors.name ? (
-                <p className="text-xs text-destructive">{errors.name.message}</p>
+                <p id="lead-name-error" role="alert" className="text-xs text-destructive">
+                  {errors.name.message}
+                </p>
               ) : null}
             </div>
             <div className="space-y-2">
-              <Label>Tür</Label>
+              <Label htmlFor="lead-type">Tür</Label>
               <Select
                 value={type}
                 onValueChange={(v) => v && setValue("type", v as LeadType)}
               >
-                <SelectTrigger>
+                <SelectTrigger id="lead-type">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -110,12 +119,12 @@ export function LeadFormDialog({ ownerId }: { ownerId: string }) {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Kaynak</Label>
+              <Label htmlFor="lead-source">Kaynak</Label>
               <Select
                 value={source}
                 onValueChange={(v) => v && setValue("source", v as LeadSource)}
               >
-                <SelectTrigger>
+                <SelectTrigger id="lead-source">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -129,14 +138,27 @@ export function LeadFormDialog({ ownerId }: { ownerId: string }) {
             </div>
             <div className="space-y-2">
               <Label htmlFor="lead-email">E-posta</Label>
-              <Input id="lead-email" type="email" {...register("email")} />
+              <Input
+                id="lead-email"
+                type="email"
+                placeholder="ahmet@example.com"
+                aria-invalid={!!errors.email}
+                aria-describedby={errors.email ? "lead-email-error" : undefined}
+                {...register("email")}
+              />
               {errors.email ? (
-                <p className="text-xs text-destructive">{errors.email.message}</p>
+                <p id="lead-email-error" role="alert" className="text-xs text-destructive">
+                  {errors.email.message}
+                </p>
               ) : null}
             </div>
             <div className="space-y-2">
               <Label htmlFor="lead-phone">Telefon</Label>
-              <Input id="lead-phone" {...register("phone")} />
+              <Input
+                id="lead-phone"
+                placeholder="+90 532 000 0000"
+                {...register("phone")}
+              />
             </div>
           </div>
           <DialogFooter>
@@ -144,7 +166,14 @@ export function LeadFormDialog({ ownerId }: { ownerId: string }) {
               İptal
             </Button>
             <Button type="submit" disabled={isSubmitting}>
-              Kaydet
+              {isSubmitting ? (
+                <>
+                  <Loader2Icon className="size-4 animate-spin" aria-hidden="true" />
+                  <span>Kaydediliyor…</span>
+                </>
+              ) : (
+                "Kaydet"
+              )}
             </Button>
           </DialogFooter>
         </form>
