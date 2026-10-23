@@ -29,16 +29,17 @@ export function LeadTags({ tagIds }: { tagIds?: string[] }) {
   if (matched.length === 0) return null;
 
   return (
-    <div className="flex flex-wrap gap-1">
+    <ul className="flex flex-wrap gap-1" aria-label="Etiketler">
       {matched.map((t) => (
-        <Badge
-          key={t.id}
-          variant="outline"
-          style={t.color ? { borderColor: t.color, color: t.color } : undefined}
-        >
-          {t.name}
-        </Badge>
+        <li key={t.id}>
+          <Badge
+            variant="outline"
+            style={t.color ? { borderColor: t.color, color: t.color } : undefined}
+          >
+            {t.name}
+          </Badge>
+        </li>
       ))}
-    </div>
+    </ul>
   );
 }
