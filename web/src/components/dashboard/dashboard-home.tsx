@@ -98,12 +98,21 @@ export function DashboardHome() {
     };
   }, [uid, isAdmin]);
 
-  const todayStart = startOfDay(new Date());
-  const todayEnd = endOfDay(new Date());
-  const weekAgo = startOfDay(subDays(new Date(), 7));
-  const monthStart = startOfMonth(new Date());
+  // Primitive string key to prevent memo invalidation on every render while updating when calendar date changes
+  const todayKey = format(new Date(), "yyyy-MM-dd");
 
   const stats = useMemo(() => {
+    // Satisfy ESLint exhaustive-deps for primitive key invalidation
+    void todayKey;
+
+    const now = new Date();
+    const todayStart = startOfDay(now);
+    const todayEnd = endOfDay(now);
+    const weekAgo = startOfDay(subDays(now, 7));
+    const monthStart = startOfMonth(now);
+
+    const openTasks = tasks.filter((t) => t.status === "open");
+
     const leadsToday = leads.filter((l) => {
       const c = l.createdAt;
       if (!c) return false;
@@ -152,7 +161,7 @@ export function DashboardHome() {
       if (l.score < 50) return false;
       const last = l.lastContactAt;
       if (!last) return true;
-      return isBefore(last, subDays(new Date(), 3));
+      return isBefore(last, subDays(now, 3));
     });
 
     const awaitingPayment = leads.filter(
@@ -177,8 +186,9 @@ export function DashboardHome() {
       hotSilent,
       awaitingPayment,
       overdueTasks,
+      openTasks,
     };
-  }, [leads, tasks, deals, activities, todayStart, todayEnd, weekAgo, monthStart]);
+  }, [leads, tasks, deals, activities, todayKey]);
 
   return (
     <div className="space-y-8">
@@ -325,11 +335,10 @@ export function DashboardHome() {
             <CardTitle className="text-base">Bugünkü görevler</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
-            {tasks.filter((t) => t.status === "open").length === 0 ? (
+            {stats.openTasks.length === 0 ? (
               <p className="text-muted-foreground">Açık görev yok.</p>
             ) : (
-              tasks
-                .filter((t) => t.status === "open")
+              stats.openTasks
                 .slice(0, 6)
                 .map((t) => (
                   <div
