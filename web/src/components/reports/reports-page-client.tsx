@@ -140,7 +140,9 @@ export function ReportsPageClient() {
     };
   }, [uid, isAdmin]);
 
+  // Memoize stable dealIds and serialized dealIdsKey to prevent unnecessary re-subscriptions and string joins
   const dealIds = useMemo(() => deals.map((d) => d.id), [deals]);
+  const dealIdsKey = useMemo(() => dealIds.join(","), [dealIds]);
 
   useEffect(() => {
     if (!uid || !showCorporate) return;
@@ -150,7 +152,8 @@ export function ReportsPageClient() {
       { isAdmin, dealIds },
       setProposals
     );
-  }, [uid, isAdmin, showCorporate, dealIds.join(",")]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [uid, isAdmin, showCorporate, dealIdsKey]);
 
   useEffect(() => {
     if (!uid || !showEnrollmentsBlock) return;
@@ -296,21 +299,35 @@ export function ReportsPageClient() {
       .sort((a, b) => b.leadsNew + b.dealsWon - (a.leadsNew + a.dealsWon));
   }, [isAdmin, leadsInRange, dealsWonInRange, users]);
 
+  // Single-pass Map aggregation across leads to compute total & enrolled per source in O(N + S) time
   const conversionBySource = useMemo(() => {
-    const rows: { source: string; total: number; enrolled: number; pct: number }[] =
-      [];
-    LEAD_SOURCES.forEach((s) => {
-      const subset = leads.filter((l) => l.source === s);
-      const total = subset.length;
-      const en = subset.filter((l) => l.educationStage === "enrolled").length;
-      rows.push({
-        source: LABELS.source[s],
-        total,
-        enrolled: en,
-        pct: total ? Math.round((en / total) * 100) : 0,
-      });
+    const counts = new Map<string, { total: number; enrolled: number }>();
+    LEAD_SOURCES.forEach((s) => counts.set(s, { total: 0, enrolled: 0 }));
+
+    for (let i = 0; i < leads.length; i++) {
+      const l = leads[i];
+      const entry = counts.get(l.source);
+      if (entry) {
+        entry.total += 1;
+        if (l.educationStage === "enrolled") {
+          entry.enrolled += 1;
+        }
+      }
+    }
+
+    const rows: { source: string; total: number; enrolled: number; pct: number }[] = [];
+    counts.forEach((val, s) => {
+      if (val.total > 0) {
+        rows.push({
+          source: LABELS.source[s as keyof typeof LABELS.source] ?? s,
+          total: val.total,
+          enrolled: val.enrolled,
+          pct: Math.round((val.enrolled / val.total) * 100),
+        });
+      }
     });
-    return rows.filter((r) => r.total > 0).sort((a, b) => b.pct - a.pct);
+
+    return rows.sort((a, b) => b.pct - a.pct);
   }, [leads]);
 
   const csvRowCount = useMemo(() => {
@@ -347,7 +364,11 @@ export function ReportsPageClient() {
   }
 
   const totalLeadsAll = leads.length;
-  const enrolledAll = leads.filter((l) => l.educationStage === "enrolled").length;
+  // Memoize aggregated enrolledAll count across leads to prevent re-filtering on unrelated renders
+  const enrolledAll = useMemo(
+    () => leads.filter((l) => l.educationStage === "enrolled").length,
+    [leads]
+  );
   const conversionAll = totalLeadsAll
     ? Math.round((enrolledAll / totalLeadsAll) * 100)
     : 0;
