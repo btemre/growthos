@@ -98,12 +98,18 @@ export function DashboardHome() {
     };
   }, [uid, isAdmin]);
 
-  const todayStart = startOfDay(new Date());
-  const todayEnd = endOfDay(new Date());
-  const weekAgo = startOfDay(subDays(new Date(), 7));
-  const monthStart = startOfMonth(new Date());
+  // Bolt Optimization: Stabilize useMemo dependencies using todayKey string ("yyyy-MM-dd")
+  // to avoid creating new Date object references on every render, preventing unnecessary re-computations.
+  const todayKey = format(new Date(), "yyyy-MM-dd");
 
   const stats = useMemo(() => {
+    void todayKey;
+    const now = new Date();
+    const todayStart = startOfDay(now);
+    const todayEnd = endOfDay(now);
+    const weekAgo = startOfDay(subDays(now, 7));
+    const monthStart = startOfMonth(now);
+
     const leadsToday = leads.filter((l) => {
       const c = l.createdAt;
       if (!c) return false;
@@ -117,9 +123,10 @@ export function DashboardHome() {
       return !isBefore(d, todayStart) && !isAfter(d, todayEnd);
     }).length;
 
-    const followUpsToday = tasks.filter(
+    const openTasks = tasks.filter((t) => t.status === "open");
+
+    const followUpsToday = openTasks.filter(
       (t) =>
-        t.status === "open" &&
         t.dueDate &&
         !isBefore(t.dueDate, todayStart) &&
         !isAfter(t.dueDate, todayEnd)
@@ -152,18 +159,15 @@ export function DashboardHome() {
       if (l.score < 50) return false;
       const last = l.lastContactAt;
       if (!last) return true;
-      return isBefore(last, subDays(new Date(), 3));
+      return isBefore(last, subDays(now, 3));
     });
 
     const awaitingPayment = leads.filter(
       (l) => l.educationStage === "awaiting_payment"
     );
 
-    const overdueTasks = tasks.filter(
-      (t) =>
-        t.status === "open" &&
-        t.dueDate &&
-        isBefore(t.dueDate, todayStart)
+    const overdueTasks = openTasks.filter(
+      (t) => t.dueDate && isBefore(t.dueDate, todayStart)
     );
 
     return {
@@ -177,8 +181,9 @@ export function DashboardHome() {
       hotSilent,
       awaitingPayment,
       overdueTasks,
+      openTasks,
     };
-  }, [leads, tasks, deals, activities, todayStart, todayEnd, weekAgo, monthStart]);
+  }, [leads, tasks, deals, activities, todayKey]);
 
   return (
     <div className="space-y-8">
@@ -325,25 +330,22 @@ export function DashboardHome() {
             <CardTitle className="text-base">Bugünkü görevler</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
-            {tasks.filter((t) => t.status === "open").length === 0 ? (
+            {stats.openTasks.length === 0 ? (
               <p className="text-muted-foreground">Açık görev yok.</p>
             ) : (
-              tasks
-                .filter((t) => t.status === "open")
-                .slice(0, 6)
-                .map((t) => (
-                  <div
-                    key={t.id}
-                    className="flex items-center justify-between gap-2 rounded-md border border-border/60 bg-card/50 px-3 py-2"
-                  >
-                    <span className="truncate font-medium">{t.title}</span>
-                    <span className="shrink-0 text-xs text-muted-foreground">
-                      {t.dueDate
-                        ? format(t.dueDate, "d MMM", { locale: tr })
-                        : "—"}
-                    </span>
-                  </div>
-                ))
+              stats.openTasks.slice(0, 6).map((t) => (
+                <div
+                  key={t.id}
+                  className="flex items-center justify-between gap-2 rounded-md border border-border/60 bg-card/50 px-3 py-2"
+                >
+                  <span className="truncate font-medium">{t.title}</span>
+                  <span className="shrink-0 text-xs text-muted-foreground">
+                    {t.dueDate
+                      ? format(t.dueDate, "d MMM", { locale: tr })
+                      : "—"}
+                  </span>
+                </div>
+              ))
             )}
             <Link
               href="/tasks"
