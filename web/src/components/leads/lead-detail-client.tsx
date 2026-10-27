@@ -61,7 +61,7 @@ export function LeadDetailClient({ leadId }: { leadId: string }) {
   const [leadLoading, setLeadLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("general");
   const [activities, setActivities] = useState<Activity[]>([]);
-  const [tasks, setTasks] = useState<Task[]>([]);
+  const [allTasks, setAllTasks] = useState<Task[]>([]);
   const [notes, setNotes] = useState("");
   const [score, setScore] = useState(0);
   const [activityContent, setActivityContent] = useState("");
@@ -115,14 +115,17 @@ export function LeadDetailClient({ leadId }: { leadId: string }) {
     return subscribeActivitiesForRelated(db, "lead", leadId, setActivities);
   }, [leadId]);
 
+  // Decouple subscription from leadId to prevent listener teardown/re-subscription on lead navigation
   useEffect(() => {
     if (!uid) return;
     const db = getFirebaseDb();
-    const unsub = subscribeTasksForUser(db, uid, isAdmin, (all) => {
-      setTasks(all.filter((t) => t.relatedType === "lead" && t.relatedId === leadId));
-    });
-    return () => unsub();
-  }, [uid, isAdmin, leadId]);
+    return subscribeTasksForUser(db, uid, isAdmin, setAllTasks);
+  }, [uid, isAdmin]);
+
+  // Memoize lead-specific tasks to avoid filtering on every render
+  const tasks = useMemo(() => {
+    return allTasks.filter((t) => t.relatedType === "lead" && t.relatedId === leadId);
+  }, [allTasks, leadId]);
 
   useEffect(() => {
     if (!uid) return;
