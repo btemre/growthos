@@ -118,51 +118,57 @@ export function TasksPageClient() {
     [leads]
   );
 
-  const todayStart = startOfDay(new Date());
-  const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
-  const weekEnd = endOfWeek(new Date(), { weekStartsOn: 1 });
+  // Stabilize date dependency for useMemo using a primitive date string key
+  const todayKey = format(new Date(), "yyyy-MM-dd");
 
+  // Single-pass classification of tasks into date buckets in O(N) time,
+  // with stabilized date calculations inside useMemo to prevent unneeded re-filtering.
   const grouped = useMemo(() => {
-    let list = tasks;
-    if (filterOverdue) {
-      list = list.filter(
-        (t) =>
-          t.status === "open" && t.dueDate && isBefore(t.dueDate, todayStart)
-      );
-    }
-    const overdue = list.filter(
-      (t) =>
-        t.status === "open" && t.dueDate && isBefore(t.dueDate, todayStart)
-    );
+    void todayKey;
+    const now = new Date();
+    const todayStart = startOfDay(now);
     const todayEnd = addDays(todayStart, 1);
-    const today = list.filter(
-      (t) =>
-        t.status === "open" &&
-        t.dueDate &&
-        !isBefore(t.dueDate, todayStart) &&
-        isBefore(t.dueDate, todayEnd)
-    );
-    const todayIds = new Set(today.map((t) => t.id));
-    const overdueIds = new Set(overdue.map((t) => t.id));
-    const thisWeek = list.filter(
-      (t) =>
-        t.status === "open" &&
-        t.dueDate &&
-        !isBefore(t.dueDate, weekStart) &&
-        !isBefore(weekEnd, t.dueDate) &&
-        !todayIds.has(t.id) &&
-        !overdueIds.has(t.id)
-    );
-    const weekIds = new Set(thisWeek.map((t) => t.id));
-    const later = list.filter(
-      (t) =>
-        t.status === "open" &&
-        !overdueIds.has(t.id) &&
-        !todayIds.has(t.id) &&
-        !weekIds.has(t.id)
-    );
+    const weekStart = startOfWeek(now, { weekStartsOn: 1 });
+    const weekEnd = endOfWeek(now, { weekStartsOn: 1 });
+
+    const overdue: Task[] = [];
+    const today: Task[] = [];
+    const thisWeek: Task[] = [];
+    const later: Task[] = [];
+
+    const list = filterOverdue
+      ? tasks.filter(
+          (t) =>
+            t.status === "open" &&
+            t.dueDate !== null &&
+            t.dueDate !== undefined &&
+            isBefore(t.dueDate, todayStart)
+        )
+      : tasks;
+
+    for (const t of list) {
+      if (t.status !== "open") continue;
+
+      if (t.dueDate) {
+        if (isBefore(t.dueDate, todayStart)) {
+          overdue.push(t);
+        } else if (isBefore(t.dueDate, todayEnd)) {
+          today.push(t);
+        } else if (
+          !isBefore(t.dueDate, weekStart) &&
+          !isBefore(weekEnd, t.dueDate)
+        ) {
+          thisWeek.push(t);
+        } else {
+          later.push(t);
+        }
+      } else {
+        later.push(t);
+      }
+    }
+
     return { overdue, today, thisWeek, later, all: list };
-  }, [tasks, todayStart, weekStart, weekEnd, filterOverdue]);
+  }, [tasks, todayKey, filterOverdue]);
 
   async function onCreate(values: TaskFormValues) {
     if (!uid) return;
