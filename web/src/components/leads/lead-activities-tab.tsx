@@ -5,6 +5,7 @@ import { tr } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -41,7 +42,11 @@ export function LeadActivitiesTab({
           <CardTitle className="text-base">Yeni aktivite</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <div className="flex flex-wrap gap-2">
+          <div
+            className="flex flex-wrap gap-2"
+            role="group"
+            aria-label="Aktivite şablonları"
+          >
             {ACTIVITY_TEMPLATES.map((tpl) => (
               <Button
                 key={tpl.label}
@@ -54,28 +59,39 @@ export function LeadActivitiesTab({
               </Button>
             ))}
           </div>
-          <Select
-            value={activityType}
-            onValueChange={(v) => v && setActivityType(v as ActivityType)}
+          <div className="space-y-2">
+            <Label htmlFor="lead-activity-type">Aktivite türü</Label>
+            <Select
+              value={activityType}
+              onValueChange={(v) => v && setActivityType(v as ActivityType)}
+            >
+              <SelectTrigger id="lead-activity-type" aria-label="Aktivite türü seçimi">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {ACTIVITY_TYPES.map((t) => (
+                  <SelectItem key={t} value={t}>
+                    {LABELS.activityType[t]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="lead-activity-content">Aktivite detayı</Label>
+            <Textarea
+              id="lead-activity-content"
+              rows={3}
+              placeholder="Ne yapıldı?"
+              value={activityContent}
+              onChange={(e) => setActivityContent(e.target.value)}
+            />
+          </div>
+          <Button
+            type="button"
+            onClick={onAdd}
+            disabled={!activityContent.trim()}
           >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {ACTIVITY_TYPES.map((t) => (
-                <SelectItem key={t} value={t}>
-                  {LABELS.activityType[t]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Textarea
-            rows={3}
-            placeholder="Ne yapıldı?"
-            value={activityContent}
-            onChange={(e) => setActivityContent(e.target.value)}
-          />
-          <Button type="button" onClick={onAdd}>
             Ekle
           </Button>
         </CardContent>
