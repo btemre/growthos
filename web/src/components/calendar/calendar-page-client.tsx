@@ -52,11 +52,25 @@ export function CalendarPageClient() {
     };
   }, [uid, isAdmin]);
 
-  const events = useMemo(() => {
-    const list: CalEvent[] = [];
+  // Performance optimization: Group events into a Map keyed by `yyyy-MM-dd`.
+  // Replaces O(D * E) array filter scans across the 35-42 calendar grid cells
+  // and selected day lookups with O(1) hash map lookups.
+  const eventsByDay = useMemo(() => {
+    const map = new Map<string, CalEvent[]>();
+
+    const appendEvent = (date: Date, event: CalEvent) => {
+      const key = format(date, "yyyy-MM-dd");
+      const list = map.get(key);
+      if (list) {
+        list.push(event);
+      } else {
+        map.set(key, [event]);
+      }
+    };
+
     for (const t of tasks) {
       if (!t.dueDate || t.status !== "open") continue;
-      list.push({
+      appendEvent(t.dueDate, {
         id: `task-${t.id}`,
         date: t.dueDate,
         title: t.title,
@@ -66,7 +80,7 @@ export function CalendarPageClient() {
     }
     for (const l of leads) {
       if (!l.nextActionAt) continue;
-      list.push({
+      appendEvent(l.nextActionAt, {
         id: `lead-${l.id}`,
         date: l.nextActionAt,
         title: `${l.name} — aksiyon`,
@@ -74,18 +88,21 @@ export function CalendarPageClient() {
         kind: "lead",
       });
     }
-    return list;
+    return map;
   }, [tasks, leads]);
 
-  const monthStart = startOfMonth(viewMonth);
-  const monthEnd = endOfMonth(viewMonth);
-  const gridStart = startOfWeek(monthStart, { weekStartsOn: 1 });
-  const gridEnd = startOfWeek(addDays(monthEnd, 6), { weekStartsOn: 1 });
-  const days = eachDayOfInterval({ start: gridStart, end: addDays(gridEnd, 6) });
+  // Performance optimization: Memoize grid day intervals to avoid re-generating
+  // interval arrays when user selects a different day (`selectedDay`).
+  const days = useMemo(() => {
+    const monthStart = startOfMonth(viewMonth);
+    const monthEnd = endOfMonth(viewMonth);
+    const gridStart = startOfWeek(monthStart, { weekStartsOn: 1 });
+    const gridEnd = startOfWeek(addDays(monthEnd, 6), { weekStartsOn: 1 });
+    return eachDayOfInterval({ start: gridStart, end: addDays(gridEnd, 6) });
+  }, [viewMonth]);
 
-  const selectedDayEvents = events.filter((e) =>
-    isSameDay(e.date, selectedDay)
-  );
+  const selectedDayKey = format(selectedDay, "yyyy-MM-dd");
+  const selectedDayEvents = eventsByDay.get(selectedDayKey) ?? [];
 
   return (
     <div className="space-y-6">
@@ -129,7 +146,8 @@ export function CalendarPageClient() {
           </div>
           <div className="grid grid-cols-7 gap-1">
             {days.map((day) => {
-              const dayEvents = events.filter((e) => isSameDay(e.date, day));
+              const dayKey = format(day, "yyyy-MM-dd");
+              const dayEvents = eventsByDay.get(dayKey) ?? [];
               const inMonth = isSameMonth(day, viewMonth);
               const selected = isSameDay(day, selectedDay);
               return (
