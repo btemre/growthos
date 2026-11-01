@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { format, formatDistanceToNow } from "date-fns";
 import { tr } from "date-fns/locale";
+import { Check, Copy, ExternalLink, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -20,16 +21,26 @@ import { getCompany } from "@/lib/firestore/companies";
 import type { Company, Deal } from "@/types/models";
 import { cn } from "@/lib/utils";
 
-export function DealDetailClient({ dealId }: { dealId: string }) {
+export function DealDetailClient({
+  dealId,
+  initialDeal,
+  initialCompany,
+}: {
+  dealId: string;
+  initialDeal?: Deal;
+  initialCompany?: Company;
+}) {
   const { firebaseUser, profile } = useAuth();
-  const [deal, setDeal] = useState<Deal | null>(null);
-  const [company, setCompany] = useState<Company | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [deal, setDeal] = useState<Deal | null>(initialDeal ?? null);
+  const [company, setCompany] = useState<Company | null>(initialCompany ?? null);
+  const [loading, setLoading] = useState(!initialDeal);
+  const [copied, setCopied] = useState(false);
   const uid = firebaseUser?.uid ?? "";
   const isAdmin = profile?.role === "admin";
   const { resolveOwner } = useUserDirectory(isAdmin);
 
   useEffect(() => {
+    if (initialDeal) return;
     const db = getFirebaseDb();
     return subscribeDeal(
       db,
@@ -40,15 +51,15 @@ export function DealDetailClient({ dealId }: { dealId: string }) {
       },
       () => setLoading(false)
     );
-  }, [dealId]);
+  }, [dealId, initialDeal]);
 
   useEffect(() => {
-    if (!deal?.companyId) return;
+    if (initialCompany || !deal?.companyId) return;
     const db = getFirebaseDb();
     getCompany(db, deal.companyId)
       .then(setCompany)
       .catch(console.error);
-  }, [deal?.companyId]);
+  }, [deal?.companyId, initialCompany]);
 
   const canManage =
     profile?.role === "admin" || profile?.role === "business_dev";
@@ -81,14 +92,20 @@ export function DealDetailClient({ dealId }: { dealId: string }) {
           <div className="flex flex-wrap gap-2">
             <Link
               href="/pipeline/corporate"
-              className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+              className={cn(
+                buttonVariants({ variant: "outline", size: "sm" }),
+                "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              )}
             >
               Pipeline
             </Link>
             {canManage ? (
               <Link
                 href={`/proposals?deal=${deal.id}`}
-                className={cn(buttonVariants({ size: "sm" }))}
+                className={cn(
+                  buttonVariants({ size: "sm" }),
+                  "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                )}
               >
                 Teklifler
               </Link>
@@ -160,9 +177,11 @@ export function DealDetailClient({ dealId }: { dealId: string }) {
                     href={company.website.startsWith("http") ? company.website : `https://${company.website}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-primary hover:underline"
+                    className="inline-flex items-center gap-1 rounded-sm text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    aria-label={`${company.name} web sitesini yeni sekmede aç`}
                   >
                     {company.website}
+                    <ExternalLink className="size-3 shrink-0" aria-hidden="true" />
                   </a>
                 ) : null}
                 {company.notes ? (
@@ -188,17 +207,35 @@ export function DealDetailClient({ dealId }: { dealId: string }) {
             type="button"
             variant="outline"
             size="sm"
-            onClick={() => {
-              void navigator.clipboard.writeText(deal.id);
-              toast.success("Deal ID kopyalandı");
+            onClick={async () => {
+              try {
+                await navigator.clipboard.writeText(deal.id);
+                setCopied(true);
+                toast.success("Deal ID kopyalandı");
+                setTimeout(() => setCopied(false), 2000);
+              } catch {
+                toast.error("Kopyalama başarısız");
+              }
             }}
+            aria-label={copied ? "Fırsat kimliği kopyalandı" : "Fırsat kimliğini panoya kopyala"}
+            className="focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
-            ID kopyala
+            {copied ? (
+              <Check className="mr-1.5 size-3.5 text-emerald-600" aria-hidden="true" />
+            ) : (
+              <Copy className="mr-1.5 size-3.5 text-muted-foreground" aria-hidden="true" />
+            )}
+            {copied ? "Kopyalandı" : "ID kopyala"}
           </Button>
           <Link
-            href={`/tasks`}
-            className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+            href="/tasks"
+            className={cn(
+              buttonVariants({ variant: "outline", size: "sm" }),
+              "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            )}
+            aria-label="Bu fırsat için görev oluştur"
           >
+            <Plus className="mr-1.5 size-3.5 text-muted-foreground" aria-hidden="true" />
             Görev oluştur
           </Link>
         </CardContent>
