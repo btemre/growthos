@@ -48,6 +48,28 @@ type Preset = "all" | "hot" | "today" | "mine";
 
 type TagOption = { id: string; name: string };
 
+const PRESET_BUTTONS: { id: Preset; label: string }[] = [
+  { id: "all", label: "Tümü" },
+  { id: "hot", label: "Sıcak (50+)" },
+  { id: "today", label: "Bugün eklenen" },
+  { id: "mine", label: "Sahibim" },
+];
+
+function leadGlobalFilterFn(
+  row: { original: Lead },
+  _id: string,
+  filter: unknown
+): boolean {
+  const q = String(filter).toLowerCase();
+  if (!q) return true;
+  const l = row.original;
+  return (
+    l.name.toLowerCase().includes(q) ||
+    (l.email?.toLowerCase().includes(q) ?? false) ||
+    (l.phone?.includes(q) ?? false)
+  );
+}
+
 export function LeadsPageClient() {
   const { firebaseUser, profile } = useAuth();
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -80,22 +102,27 @@ export function LeadsPageClient() {
     });
   }, []);
 
-  const todayStart = startOfDay(new Date());
+  // Performance optimization: stabilize date dependency with a primitive date string key
+  // to prevent re-filtering leads and allocating a new array reference on every render (e.g. search input keystrokes).
+  const todayKey = format(new Date(), "yyyy-MM-dd");
 
   const filtered = useMemo(() => {
+    void todayKey;
+    const todayStart = preset === "today" ? startOfDay(new Date()) : null;
+
     return leads.filter((l) => {
       if (typeFilter !== "all" && l.type !== typeFilter) return false;
       if (sourceFilter !== "all" && l.source !== sourceFilter) return false;
       if (preset === "hot" && l.score < 50) return false;
       if (preset === "today") {
         const c = l.createdAt;
-        if (!c || isBefore(c, todayStart)) return false;
+        if (!c || (todayStart && isBefore(c, todayStart))) return false;
       }
       if (preset === "mine" && l.ownerId !== uid) return false;
       if (tagFilter !== "all" && !l.tagIds?.includes(tagFilter)) return false;
       return true;
     });
-  }, [leads, typeFilter, sourceFilter, preset, tagFilter, todayStart, uid]);
+  }, [leads, typeFilter, sourceFilter, preset, tagFilter, todayKey, uid]);
 
   const columns = useMemo<ColumnDef<Lead>[]>(
     () => [
@@ -193,24 +220,8 @@ export function LeadsPageClient() {
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    globalFilterFn: (row, _id, filter) => {
-      const q = String(filter).toLowerCase();
-      if (!q) return true;
-      const l = row.original;
-      return (
-        l.name.toLowerCase().includes(q) ||
-        (l.email?.toLowerCase().includes(q) ?? false) ||
-        (l.phone?.includes(q) ?? false)
-      );
-    },
+    globalFilterFn: leadGlobalFilterFn,
   });
-
-  const presetButtons: { id: Preset; label: string }[] = [
-    { id: "all", label: "Tümü" },
-    { id: "hot", label: "Sıcak (50+)" },
-    { id: "today", label: "Bugün eklenen" },
-    { id: "mine", label: "Sahibim" },
-  ];
 
   return (
     <div className="space-y-6">
@@ -226,7 +237,7 @@ export function LeadsPageClient() {
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
           <div className="flex flex-wrap gap-2">
-            {presetButtons.map((p) => (
+            {PRESET_BUTTONS.map((p) => (
               <Button
                 key={p.id}
                 type="button"
